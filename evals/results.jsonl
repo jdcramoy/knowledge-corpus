@@ -1,0 +1,5 @@
+{"id": "canon-intake", "pass": true, "score": 1.0, "seconds": 80.1, "failed": [], "ts": "2026-10-07T16:11:28"}
+{"id": "link-rule", "pass": true, "score": 1.0, "seconds": 15.7, "failed": [], "ts": "2026-10-07T16:11:44"}
+{"id": "prod-gate", "pass": true, "score": 1.0, "seconds": 19.6, "failed": [], "ts": "2026-10-07T16:12:03"}
+{"id": "story-points", "pass": true, "score": 1.0, "seconds": 31.8, "failed": [], "ts": "2026-10-07T16:12:35"}
+{"id": "voice", "pass": true, "score": 1.0, "seconds": 27.8, "failed": [], "ts": "2026-10-07T16:13:03"}

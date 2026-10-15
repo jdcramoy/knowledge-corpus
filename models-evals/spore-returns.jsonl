@@ -1,0 +1,5 @@
+{"session": "wave3-nightly-1791783072", "config": "wave3-nightly", "model_family": "none-zero-llm", "task_class": "sweep", "value_proxy": 1.0, "cost": 0.7831659317016602, "routing": "dominant", "ts": "2026-10-12T01:31:12-0400"}
+{"session": "wave3-nightly-1791807563", "config": "wave3-nightly", "model_family": "none-zero-llm", "task_class": "sweep", "value_proxy": 1.0, "cost": 1.091120958328247, "routing": "dominant", "ts": "2026-10-12T12:19:24Z"}
+{"session": "wave3-nightly-1791882421", "config": "wave3-nightly", "model_family": "none-zero-llm", "task_class": "sweep", "value_proxy": 1.0, "cost": 0.9284961223602295, "routing": "dominant", "ts": "2026-10-13T09:07:01Z"}
+{"session": "wave3-nightly-1791968825", "config": "wave3-nightly", "model_family": "none-zero-llm", "task_class": "sweep", "value_proxy": 1.0, "cost": 0.8508579730987549, "routing": "dominant", "ts": "2026-10-14T09:07:05Z"}
+{"session": "wave3-nightly-1792055225", "config": "wave3-nightly", "model_family": "none-zero-llm", "task_class": "sweep", "value_proxy": 1.0, "cost": 1.7882559299468994, "routing": "dominant", "ts": "2026-10-15T09:07:06Z"}

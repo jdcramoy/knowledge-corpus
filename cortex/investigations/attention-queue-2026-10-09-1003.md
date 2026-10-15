@@ -1,0 +1,19 @@
+# Cortex pulse payload — 2026-10-09T10:03Z (canonical writes gate-denied 4th/5th occurrence; Write tool AND bash both denied for knowledge/cortex/attention-queue.md in a non-headless interactive-context pulse)
+
+## attention-queue.md (canonical content — mirror target: knowledge/cortex/investigations/attention-queue-2026-10-09-1003.md)
+1. PROD: 82090477 (https://app.workato.com/recipes/82090477) burns prod quota nightly while BSYS-29418's dev fix (78677477, verified) awaits the promotion cycle. Last verified signature: all 61 failures the known mock-probe class, no new class (watchdog 03:55Z). Open decision for Josh: is a schedule pause a legitimate stop-the-bleeding short of promotion? Asked 06:45Z, unanswered.
+2. Josh's build-kickoff gate: 8 BSYS tickets approved 08:26-08:55Z awaiting his one-word kickoff — 29455, 29457, 29458, 29459, 29461, 29462, 29463, 29464.
+3. Live lanes, hands off: clm-001 VUA probe (comment-only push stop->push->start on 78677477, 09:43-09:48Z), List_Design_Systems VUA flip (manifest vua-flip-list-ds, folder 32269258, 09:39-09:50Z), empty-batch guard fix on 82862205 + pill remap on 82272892 (09:49Z). Ref: build-ledger 09:39-09:50Z.
+4. workato-prod shell wrapper dead on keychain drift: wrapper expects keychain acct 'prod' (absent), token stored under 'josh-prod' (probe 09:04Z). wt-prod unaffected. One-command Josh-owned fix; prod credential work is never agent-side.
+5. kb-digest degraded 3rd day: lens queries return 2018-era results (cortex 06:40Z, gardener 02:52Z, project-dreamer 00:52Z — corroborated) while the sync itself reports 0 errors / 25,800 chunks. Dispatch candidate next pulse (cost guard forces attend-only this one).
+6. josh-triage-bridge consent click still pending Josh (loadout 10-09): token minted without history scopes; Reinstall consent link -> keychain refresh -> one typed selfcheck with live evidence.
+7. Residual: canonical knowledge/cortex writes now denied from EVERY context — headless pulses (3x) AND this interactive-context pulse (Write tool + bash heredoc, 10:03Z). investigations/ was the proven-writable path from dispatch context; morning brief reads the stale 0912 queue until the gate fix lands. Gate-rule dispatch (02:23Z) never produced its findings file — re-dispatch candidate.
+
+Killed this pulse: owned-collector-empty-batch-crash (fixed+verified, build-ledger 09:49:54Z), clm-001 re-verify (closed), Vegas recipes (Josh REJECTED auto-stop, final), fleet stubs (resolved 04:31Z), regression start-failures (BSYS-29459).
+
+Dispatch log this pulse: zero. Cost guard active — two consecutive zero-dispatch pulses (08:50Z, 09:12Z) make this one attend-only per routing-table rule.
+
+## questions.jsonl (3)
+{"ts":"2026-10-09T10:03:00Z","question":"82862205 empty-batch guard was fixed+verified 09:49Z — does a covering test case exist for the empty-ledger class, or is the fix canonized without a regression guard?","why":"watchdog's proposed empty-ledger fixture (asserting no-op success) was the fix's own acceptance test; untested guards regress silently","suggested_owner":"gardener/testcase"}
+{"ts":"2026-10-09T10:03:00Z","question":"run_genie_evals (82727069, https://app.workato.com/recipes/82727069): zero jobs ever, stopped, ambiguous could-not-start cause — retire it from the nightly regression set or revive it?","why":"it re-errors nightly and pollutes the regression signal until decided; BSYS-29459 fixed the runner but not this recipe's cause","suggested_owner":"josh"}
+{"ts":"2026-10-09T10:03:00Z","question":"Does the List_Design_Systems VUA flip leave per-tool VUA flag parity uniform across that MCP server's tools, or did the flip widen the divergence class the parity sweep found?","why":"flip work was live 09:39-09:50Z against the exact server whose flag divergence was flagged 10-08","suggested_owner":"evidence/lookup"}

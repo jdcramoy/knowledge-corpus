@@ -1,0 +1,132 @@
+flowchart TD
+    %%{init: {"flowchart": {"nodeSpacing": 30, "rankSpacing": 40}}}%%
+    %% Estate Monitor — Level 2 asset graph (all Workato assets, dev project 18242571)
+    %% REPRESENTED: full set — 12 recipes, 6 data tables, 3 connections, project properties. Nothing omitted.
+    %% Edge truth: dependency tracker NOT run this pass. Every edge is sourced from
+    %% kf (~/.claude/knowledge/projects/estate-monitor.md) or ledger (orca repo docs/estate-monitor/BUILD_LEDGER.md).
+    %% Unsourced edges deliberately absent: e.g. no drawn edge for registrar → Asset Registry (not stated in either source).
+
+    subgraph triggers["Trigger sources"]
+        direction TB
+        trigOps["RecipeOps workspace events<br/><i>stopped-by-user · job failed · connection<br/>disconnected · refresh failed · stopped-by-Workato · started</i><br/><i>src: ledger</i>"]
+        trigSlack["Slack Events API<br/><i>reaction_added</i><br/><i>src: kf L101; ledger</i>"]
+        trigSched["Schedulers 5 min<br/><i>src: ledger</i>"]
+        trigDaily["Scheduler daily 03:00<br/><i>src: kf L24; ledger</i>"]
+    end
+
+    subgraph captures["Capture layer"]
+        direction TB
+        r82966983["EM | Capture Recipe Stopped · 82966983<br/><i>src: ledger</i>"]
+        r82966987["EM | Capture Recipe Failed · 82966987<br/><i>src: ledger</i>"]
+        r82966989["EM | Capture Connection Disconnected · 82966989<br/><i>src: ledger</i>"]
+        r82967000["EM | Capture Connection Refresh Failure · 82967000<br/><i>src: ledger</i>"]
+        r82967001["EM | Capture Recipe Stopped by Workato · 82967001<br/><i>src: ledger</i>"]
+    end
+
+    subgraph core["Scope + routing"]
+        direction TB
+        f82966879["EM | Resolve Scope (function) · 82966879<br/><i>folder_path → scope row; zArchive +<br/>self-exclusion; default fallback row</i><br/><i>src: kf L45-49, L76-77; ledger</i>"]
+        r82966986["EM | Route Incident · 82966986<br/><i>scope-gate → open incident + Correlation ID<br/>slack_alert|channel|ts → alert; dedupe by key</i><br/><i>src: kf L102-103; ledger</i>"]
+        r82966985["EM | Register Started Recipe · 82966985<br/><i>claim-first resolve + 🟢 green ping;<br/>missed-start safety net lives in 82966998</i><br/><i>src: ledger</i>"]
+    end
+
+    subgraph evals["Evaluators + reporting"]
+        direction TB
+        r82966988["EM | Evaluate Error Thresholds · 82966988<br/><i>windowed error-burst count → burst signal;<br/>audit row per scope per cycle</i><br/><i>src: ledger</i>"]
+        r82966998["EM | Evaluate Service Health · 82966998<br/><i>staleness → degraded signal; resolves degraded /<br/>connection / missed-start incidents on live proof</i><br/><i>src: kf L49-51; ledger</i>"]
+        r82967004["EM | Daily Ops Report · 82967004<br/><i>per-scope digest, quiet scopes skipped</i><br/><i>src: kf L24; ledger</i>"]
+    end
+
+    subgraph reaction["Reaction-to-ticket"]
+        direction TB
+        r82971161["EM | Capture Ticket Reaction · 82971161<br/><i>reaction_added → Correlation-ID lookup →<br/>idempotency gate → BSYS Bug (assignee =<br/>last editor) → thread reply</i><br/><i>src: kf L101-106, L121-122; ledger</i>"]
+    end
+
+    subgraph tables["Data tables (folder 35778609)"]
+        direction TB
+        t158779["EM | Monitor Scope · 158779<br/><i>src: kf L20-21; ledger</i>"]
+        t158780["EM | Asset Registry · 158780<br/><i>src: kf L20-21; ledger</i>"]
+        t158781["EM | Signal Ledger · 158781<br/><i>src: kf L20-21; ledger</i>"]
+        t158782["EM | Incident State · 158782<br/><i>src: kf L20-21; ledger</i>"]
+        t158783["EM | Thresholds · 158783<br/><i>src: kf L20-21; ledger</i>"]
+        t158784["EM | Ops Audit Log · 158784<br/><i>src: kf L20-21; ledger</i>"]
+    end
+
+    subgraph conns["Connections"]
+        direction TB
+        c22286384["EM | Estate Monitor Alerts Bot · 22286384<br/><i>Workbot · profile 46357</i><br/><i>src: kf L13-14, L89-90; ledger</i>"]
+        c22286593["CON | Estate Monitor Events (Slack) · 22286593<br/><i>Slack connector · profile 46359</i><br/><i>src: kf L13-14, L105-106</i>"]
+        c18479504["Jira · 18479504<br/><i>integrations.ai@workato.com</i><br/><i>src: ledger; kf L99</i>"]
+    end
+
+    props["Project properties · 18242571<br/><i>EM Error Burst Window/Count, Staleness,<br/>Handled Exception Window/Count — fallback<br/>chain: property → table row → default</i><br/><i>src: kf L40-43</i>"]
+
+    trigOps -->|"stopped-by-user"| r82966983
+    trigOps -->|"job failed"| r82966987
+    trigOps -->|"connection disconnected"| r82966989
+    trigOps -->|"refresh failed"| r82967000
+    trigOps -->|"stopped by Workato"| r82967001
+    trigOps -->|"started"| r82966985
+    trigSlack --> r82971161
+    trigSched --> r82966988
+    trigSched --> r82966998
+    trigDaily --> r82967004
+
+    r82966983 -->|"scope gate"| f82966879
+    r82966987 -->|"scope gate"| f82966879
+    r82967001 -->|"scope gate"| f82966879
+    f82966879 -->|"match Path prefix"| t158779
+
+    r82966983 -->|"append signal"| t158781
+    r82966987 -->|"append signal"| t158781
+    r82966987 -->|"registry upsert"| t158780
+    r82966989 -->|"append signal"| t158781
+    r82967000 -->|"append signal"| t158781
+    r82967001 -->|"append signal"| t158781
+    r82967001 -->|"registry upsert (Expected running=false)"| t158780
+
+    t158781 ==>|"realtime trigger"| r82966986
+    r82966986 -->|"open incident +<br/>Correlation ID"| t158782
+    r82966986 -->|"audit"| t158784
+    r82966986 -->|"incident alert"| c22286384
+
+    r82966985 -->|"resolve incident"| t158782
+    r82966985 -->|"🟢 recovery ping"| c22286384
+
+    r82966988 -->|"enabled scopes"| t158779
+    r82966988 -->|"threshold row"| t158783
+    r82966988 -->|"count + burst signal"| t158781
+    r82966988 -->|"audit"| t158784
+    r82966998 -->|"staleness threshold"| t158783
+    r82966998 -->|"expected-running rows"| t158780
+    r82966998 -->|"append degraded signal"| t158781
+    r82966998 -->|"resolve incidents"| t158782
+    r82966998 -->|"audit"| t158784
+    r82966998 -->|"🟢 recovery ping"| c22286384
+    r82967004 -->|"read incidents"| t158782
+    r82967004 -->|"daily digest"| c22286384
+    r82967004 -->|"audit"| t158784
+
+    props -.->|"fallback chain"| r82966988
+    props -.->|"fallback chain"| r82966998
+
+    r82971161 -->|"lookup by Correlation ID"| t158782
+    r82971161 -->|"idempotency + audit"| t158784
+    r82971161 -->|"create BSYS Bug"| c18479504
+    r82971161 -->|"🎫 thread reply"| c22286384
+
+    classDef recipe fill:#e8f0fe,stroke:#3367d6,stroke-width:2px
+    classDef function fill:#ffe8cc,stroke:#e8702a,stroke-width:2px
+    classDef table fill:#e8f5e9,stroke:#2e7d32
+    classDef connection fill:#f3e8fd,stroke:#8e44ad
+    classDef trigger fill:#fff4e0,stroke:#e8a33d
+    classDef config fill:#f5f5f5,stroke:#757575,stroke-dasharray:4
+
+    class r82966983,r82966987,r82966989,r82967000,r82967001,r82966986,r82966985,r82966988,r82966998,r82967004,r82971161 recipe
+    class f82966879 function
+    class t158779,t158780,t158781,t158782,t158783,t158784 table
+    class c22286384,c22286593,c18479504 connection
+    class trigOps,trigSlack,trigSched,trigDaily trigger
+    class props config
+
+    %% 2026-10-12 first handoff: created both levels fresh from kf + BUILD_LEDGER (tracker not run; edges kf/ledger-sourced) %%

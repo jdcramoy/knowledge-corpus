@@ -1,0 +1,91 @@
+flowchart TD
+%% HR Genie — Level 2 asset graph (Workato assets + links; every node cites its source)
+%% SOURCES: kf = ~/.claude/knowledge/projects/hr-genie.md (L = line number); tracker = workato-dependency-tracker
+%% search_recipe_dependencies live responses, workspace 3535597 "Workato AHQ | AI Development", project 15643451, 2026-10-08.
+%% No vibes: every node below was confirmed against at least one of those two sources.
+%% FAMILY COVERAGE (explicit, per session scope):
+%%   REPRESENTED: (1) BP Completion Notification family (BSYS-28313, folder 35673674);
+%%                (2) Consumer Endpoints / OOO Status family (BTSUP-72246, folders 35693717 + 35712142 per tracker).
+%%   OMITTED (documented in kf + Confluence tree, not drawn here):
+%%     - Inbox Task pipeline: Discovery Hub 74482795, Detail 74482074, Reconciler 74506733, Escalator 74505400 (kf L136-146, L286-289)
+%%     - PTO pipeline: Process New Request 74247462, Decision 74247862, Reminder 74248295, PTO Escalator 74248506, gate 82202341 (kf L289-291)
+%%     - Vegas Demo Cadence lanes 82531467/69/70/80 (kf L152-155)
+%%     - Work Anniversary Notifier 74380245 (kf L292)
+%%     - Intelligence Platform stack: Emit App Event 82862028, Collector 82862205, Correlator 82863111, Sweeper 82863150, Judge 82863299, Rollup 82863448, Correlator-2-Notifications 82863630, Digest 82863670, Gap Miner 82863884, Feedback Consumers 82863906/82872626, Eval Harness 82863915, Migration 82884094 + tables 156841-156868 (kf L496-605)
+%%     - Genie enrollment gate: Record Enrollment State 82840791, table 156515, Create App Link 74253452 (kf L531-539)
+%%     - FTO gate skills: 82839617, 82862012, 78622059, audit table 156829 (kf L411-479)
+%%     - check_business_process_status 82778233 + audit table 155277 (kf L9-13, L243-255)
+%%     - Messenger choke point internals (74094657) and HR Genie genie itself: drawn as boundary nodes only.
+%% NOTE: flowchart TD must be line 1 — mermaid fails diagram-type detection if %% comments precede it.
+
+  subgraph BPF["BP Completion Notification family — folder 35673674 (kf L123; tracker)"]
+    direction TB
+    HUB["🔁 REC | BP Completion Discovery Hub 82778372<br/>cron */5 · WQL businessProcessTransactions · no type allowlist<br/><i>src: kf L20-21; tracker</i>"]
+    PROC["⚙ FUNC | Process BP Completion Row 82778367<br/>event-level dedup · log-before-send · fewer than 2 approvers = SKIPPED_SINGLE_APPROVER<br/><i>src: kf L24-25; tracker</i>"]
+    RES["⚙ FUNC | Resolve BP Completion Recipients 82778326<br/>WQL approvedByWorkers + Get_Workers email + terminated guard<br/><i>src: kf L22-23; tracker</i>"]
+    RETRY["🔁 REC | BP Completion Retry Handler 82779006<br/>hourly · FAILED rows only · 3-attempt cap<br/><i>src: kf L26; tracker</i>"]
+    PROBE["🧪 UTIL | BP Completion WQL Probe 82778137<br/>disposable, delete at promotion<br/><i>src: kf L32; tracker</i>"]
+    BPLOG[("🗄 HR Genie | BP Completion Notification Log<br/>data table 155278<br/><i>src: kf L19, L365</i>")]
+    BPPROPS["🔧 Project properties<br/>BP Completion Notify Go-Live Date / Lookback Days<br/><i>src: kf L27-28</i>"]
+  end
+
+  subgraph CEF["Consumer Endpoints / OOO Status family — folders 35693717 + 35712142 (tracker; kf L60-64 cites 35693717)"]
+    direction TB
+    RSYNC["🔁 REC | Consumer Roster Sync 82823992<br/>cron 0 6,18 twice daily · zero-member guard at step 12<br/><i>src: kf L61, L76-79; tracker (folder 35712142)</i>"]
+    SNAP["🔁 REC | OOO Snapshot Refresh 82824104<br/>hourly in prod plan · still */5 in dev until promotion<br/><i>src: kf L62, L87-88; tracker (folder 35712142)</i>"]
+    APIP["🔌 API | Get OOO Status 82824133<br/>workato_api_platform receive_request/return_response<br/><i>src: kf L63; tracker (shows both 35693717 and 35712142)</i>"]
+    ROSTER[("🗄 Roster data table 156260<br/>32 rows · bot-sourced · merged vacation/LOA booleans<br/><i>src: kf L64, L75-76</i>")]
+    SNAPTB[("🗄 Snapshot data table 156261<br/>is_ooo + ooo_within_7d · no source column by design<br/><i>src: kf L64, L52-56</i>")]
+    CEAUD[("🗄 Audit data table 156262<br/>caller ip + client + key + rejected count since v1.1<br/><i>src: kf L64, L113-114</i>")]
+    APIG["🔌 API collection: HR Genie | Consumer Endpoints<br/>group 1404598 · endpoint v1/ooo-status ACTIVE · client team-ui-eng-utilities 1285074<br/>policy 60/min 5000/30-days · key 1372333<br/><i>src: kf L65-67, L83-85</i>"]
+  end
+
+  WDCONN["🏢 Workday backend ISU connections<br/>19760013 (SOAP/WQL, impl tenant wd108) · 19218617 (REST)<br/><i>src: kf L56-57</i>"]
+  SLACKBOT["🏢 Slack bot app BT Consumer Endpoints A0C6Y8E5U3C<br/>scopes groups:read users:read users:read.email · bot user U0C7TT30QKA<br/>custom OAuth profile 45994 · connection 22250878<br/><i>src: kf L69-74</i>"]
+  MSG["⚙ FUNC | Send Genie Event 74094657<br/>messenger choke point — BOUNDARY NODE, family internals omitted<br/><i>src: kf L199-202</i>"]
+  GENIE["🧞 HR Genie genie gin-AYbxpMha-YenKAJ-CD<br/>BOUNDARY NODE<br/><i>src: kf L236, L318</i>"]
+  SLACK["🏢 Slack DMs to approval-chain participants<br/><i>src: kf L16-17, L258-260</i>"]
+  VLAD["🏢 Team UI Engineering Utilities recipes (Vlad Sharikov)<br/>downstream HTTP consumer · dev handoff 2026-10-06<br/><i>src: kf L36-38, L83-85</i>"]
+
+  HUB -- "new completed BP rows" --> PROC
+  PROC -- "approval-chain lookup" --> RES
+  RES -- "recipients + chain" --> PROC
+  PROC -- "log-before-send write" --> BPLOG
+  HUB -. "go-live window + lookback" .-> BPPROPS
+  RETRY -- "reads FAILED rows" --> BPLOG
+  RETRY -- "re-send via messenger" --> MSG
+  PROC -- "send T6/T7 templates" --> MSG
+  MSG -- "chat trigger ginct-AbbxJxmX-gchtnT-CD" --> GENIE
+  GENIE --> SLACK
+  PROBE -. "probe only, not in live path" .-> HUB
+
+  SLACKBOT -- "member events feed roster" --> RSYNC
+  RSYNC -- "upsert roster rows" --> ROSTER
+  WDCONN -- "WQL timeOffByDateTaken + allWorkers.onLeave" --> SNAP
+  SNAP -- "rebuild snapshot rows" --> SNAPTB
+  APIP -- "roster allowlist gate" --> ROSTER
+  APIP -- "reads is_ooo / ooo_within_7d" --> SNAPTB
+  APIP -- "audit row per call" --> CEAUD
+  APIG -- "serves" --> APIP
+  VLAD -- "GET v1/ooo-status · Api-Token" --> APIG
+
+  classDef rec fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+  classDef func fill:#ccfbf1,stroke:#0d9488,color:#134e4a
+  classDef util fill:#f1f5f9,stroke:#64748b,color:#0f172a
+  classDef table fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  classDef api fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+  classDef boundary fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,stroke-dasharray:6 3,color:#3b0764
+  classDef ext fill:#f8fafc,stroke:#64748b,color:#0f172a
+  class HUB,RETRY,RSYNC,SNAP rec
+  class PROC,RES,MSG func
+  class PROBE util
+  class BPLOG,ROSTER,SNAPTB,CEAUD table
+  class APIP,APIG api
+  class GENIE boundary
+  class WDCONN,SLACKBOT,SLACK,WDCONN,VLAD ext
+  class BPF fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px
+  class CEF fill:#f0fdfa,stroke:#14b8a6,stroke-width:1.5px
+
+%% --- change log (max 10, newest first) ---
+%% 2026-10-08 restyled: classDefs (rec/func/util/table/api/boundary/ext) + role emoji; content and citations unchanged. %%
+%% 2026-10-08 initial asset graph created (first diagram): scoped to BP Completion Notification + Consumer Endpoints families per session task; omitted families listed explicitly in header comment; sources = hr-genie.md knowledge file lines + live dependency-tracker ws 3535597 (which also surfaced a folder drift: Consumer Endpoints recipes now in 35712142, kf still cites 35693717). %%

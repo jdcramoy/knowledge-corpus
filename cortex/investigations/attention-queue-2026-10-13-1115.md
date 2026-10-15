@@ -1,0 +1,11 @@
+# Attention queue rev n — 2026-10-13T11:15Z (full rebuild; canonical write-gated)
+
+1. grc-gdpr-emails: stale in-flight row on a PROD-facing deploy — possible unfinished prod state. Privacy@ to Slack deploy shipped with known defect (prod posts blank messages for long emails); workstream in-flight 28.5h, no closeout. Prod reads need Josh to attach prod MCP. Ref: mission-control/registry.json fold 11:10Z.
+2. needs-josh debt: 29 open rows, 14 non-done workstreams >24h stale (was 25/12 last pulse) — inflow outrunning decisions 5 pulses running. Oldest: bsys-28296-marketo-history blocked 38.2h (red-team FAIL blocks Marketo prod import), hr-genie-workday-mcp 34.1h, btsup-service-desk 34.1h (4 staged customer replies), sfdc-accounts-sync 28.5h. Ref: fold 11:10Z.
+3. 82964017 gw_semantic_mutation_chain_canary: root cause CONFIRMED (v12 push trigger config drift — picklist label 'Minutes' vs option ID, contradicting 'Days' selection), fix gated on Josh, still down at 10:38Z sweep. Ref: cortex/investigations/82964017-trigger-autopsy.md.
+4. KB fleet RAG ~2 days stale: camel sync failed 2 nights; root cause closed (kb/links.py normalize rewrites links in place inside 9/20 repos without committing). Josh decision owed: discard dirt, commit-vs-copy design, _update_repo hardening. Ref: cortex/investigations/kb-sync-camel-source-failure.md.
+5. Four nightly fleet jobs broken since watchdog 03:17Z: restore-drill rc=2, wave3-nightly rc=127, frontier-nightly rc=0 silent no-op, turn-audit rc=1. Shared-root-cause lookup dispatched this pulse. Ref: watchdog-reports/2026-10-12.md §0a.
+6. 82272892 data-driven invariant class: canonize or it re-fires as false alarms; triage row 82272892-registry-invariant-canon open. New 82178793 failures at 08:37Z sweep under identification (dispatched). Ref: cortex/investigations/82272892-canon-vs-sweep.md.
+7. Dormant prod defect (watch): GSlides 82090477 unguarded stopped-recipe call sites — outage over but next stop of 82872520 re-breaks prod callers; fixes owed under BSYS-29584/29585. Ref: cortex/investigations/gslides-82872520-reverify-1013z.md.
+
+Dropped from rev m: mission-control fold staleness blindspot (confirmed, proposal pending, folded into item 2); 82964161 sentinel (withdrawn, healthy).

@@ -1,0 +1,59 @@
+%% HR Genie — Level 1 system map (quick canonical map; mermaid source is the source of truth)
+%% Deep docs (stay authoritative for detail): Confluence tree, overview page 2862809419
+%%   (children: 2939093004 self-service, 2939650050 notifications, 2939355140 action safety,
+%%    2938961957 KB/fallback, 2938175596 Intelligence Platform, 2940272642 operational monitoring);
+%%   Workday-Development repo docs/workday/project-memory/ (as-built + hotfix records).
+%% Node sources: kf = ~/.claude/knowledge/projects/hr-genie.md (line numbers); tracker = workato-dependency-tracker (ws 3535597).
+flowchart LR
+  %% --- external systems (left) ---
+  WD["🏢 Workday impl tenant wd108<br/>WQL/SOAP + REST via ISU conns 19760013 / 19218617<br/><i>src: kf L56-57, L101-103</i>"]
+  WDPROD["🏢 Workday PROD tenant<br/>real absence data — dev is tenant-limited until promotion<br/><i>src: kf L101-109</i>"]
+  SLACK["🏢 Slack BT workspace<br/>employee DMs (HR Genie app), 912+ channels in prod<br/><i>src: kf L241, L258-260</i>"]
+  TEAMUI["🏢 Slack #team-ui (G9ZJS0F0U, private)<br/>roster source via bot app BT Consumer Endpoints A0C6Y8E5U3C<br/><i>src: kf L70-73</i>"]
+  VUA["🏢 Workday End-User MCP<br/>VUA identity<br/><i>src: kf L417-418</i>"]
+
+  subgraph HRG["⚙ Workato project: HR Genie — dev ws 3535597, project 15643451 (src: tracker, kf L19, L120)"]
+    direction LR
+    GENIE["🧞 HR Genie employee genie<br/>gin-AYbxpMha-YenKAJ-CD (Slack front door)<br/><i>src: kf L236, L318</i>"]
+    SKILLS["💬 Conversational Self-Service and Skills<br/>check_business_process_status 82778233 · FTO gate 82839617 + 82862012 ·<br/>submit_time_off_request 78622059<br/><i>src: kf L9-13, L243-255, L411-426, L464-479</i>"]
+    NOTIFY["📣 Proactive Notification Platform<br/>inbox-task + PTO pipelines · messenger choke point 74094657 ·<br/>enrollment gate (BSYS-29314)<br/><i>src: kf L130-199, L518-549</i>"]
+    BP["✅ BP Completion Notification family (BSYS-28313)<br/><i>src: kf L15-32</i>"]
+    CE["🔌 Consumer Endpoints / OOO Status API (BTSUP-72246)<br/><i>src: kf L34-115</i>"]
+    INTEL["📊 Intelligence Platform (telemetry)<br/>collector · judge · rollup · digest · Analyst Genie · dashboards<br/><i>src: kf L496-605</i>"]
+    LEDGERS[("🗄 Data tables<br/>notification + telemetry ledgers<br/>155278 · 132894 · 156842 · 156841 · …<br/><i>src: kf L19, L136, L500-505</i>")]
+  end
+
+  API["🏢 Team UI Engineering Utilities recipes<br/>Vlad Sharikov, HTTP consumer<br/><i>src: kf L36-38</i>"]
+  JSM["🏢 Jira Service Management<br/>HR ticket fallback path<br/><i>src: kf L403-406</i>"]
+
+  WD -- "WQL businessProcessTransactions · cron */5" --> BP
+  WD -- "WQL inbox tasks / PTO / anniversary · crons" --> NOTIFY
+  WD -- "WQL leave + PTO snapshot<br/>(timeOffByDateTaken, allWorkers.onLeave)" --> CE
+  WDPROD -. "absence accuracy arrives at prod promotion" .-> CE
+  TEAMUI -- "Slack bot member events<br/>(workspace-owned bot, never end-user creds)" --> CE
+  VUA -- "skills call Workday as the end user" --> SKILLS
+  NOTIFY -- "Send Genie Event →<br/>chat trigger ginct-AbbxJxmX-gchtnT-CD" --> GENIE
+  BP -- "approval-chain DMs via messenger 74094657" --> GENIE
+  SKILLS -- "genie skill attachment" --> GENIE
+  SLACK -- "employee questions<br/>(dev test surface = agent HR Genie 2 only)" --> GENIE
+  GENIE -- "conversation-per-notification DMs" --> SLACK
+  GENIE -- "JSM ticket create on HR requests" --> JSM
+  GENIE -- "conversation events<br/>(Agent Studio events API, 90-day purge)" --> INTEL
+  NOTIFY --> LEDGERS
+  BP --> LEDGERS
+  INTEL --> LEDGERS
+  API -- "HTTPS GET v1/ooo-status · Api-Token key" --> CE
+
+  classDef ext fill:#f8fafc,stroke:#64748b,stroke-width:1.5px,color:#0f172a
+  classDef core fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#3b0764
+  classDef feature fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef store fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  class WD,WDPROD,SLACK,TEAMUI,VUA,API,JSM ext
+  class GENIE core
+  class SKILLS,NOTIFY,BP,CE,INTEL feature
+  class LEDGERS store
+  style HRG fill:#faf5ff,stroke:#a855f7,stroke-width:2px
+
+%% --- change log (max 10, newest first) ---
+%% 2026-10-08 restyled: classDefs (ext/core/feature/store), emoji role markers, shortened edge labels — content and citations unchanged. %%
+%% 2026-10-08 initial two-level architecture map created for hr-genie (first diagram): level 1 full subsystem view (genie, skills, notification platform, BP completion, consumer endpoints, intelligence platform, ledgers) with external Workday/Slack/JSM/consumer systems; sources = hr-genie.md knowledge file + live dependency-tracker ws 3535597. %%

@@ -1,0 +1,49 @@
+flowchart LR
+    %% Estate Monitor — Level 1 system map (new joiner's first read)
+    %% Project: Workato dev 18242571 "Estate Monitor" — estate-wide monitoring platform
+    %% Sources: kf = ~/.claude/knowledge/projects/estate-monitor.md, ledger = orca repo docs/estate-monitor/BUILD_LEDGER.md
+    %% Dependency tracker NOT run for this pass — edges are knowledge-file/ledger sourced only
+
+    subgraph sources["Trigger sources"]
+        direction TB
+        recipeops["RecipeOps workspace events<br/><i>recipe stopped / failed, connection<br/>disconnected / refresh failed, started</i><br/><i>src: kf L21-22; ledger</i>"]
+        slackevents["Slack Events API<br/><i>reaction_added on app<br/>Estate Monitor Alerts A0C806UGHQF</i><br/><i>src: kf L13-14, L101</i>"]
+        sched["Workato schedulers<br/><i>2x every 5 min + daily 03:00</i><br/><i>src: kf L24; ledger</i>"]
+    end
+
+    monitored["Monitored dev recipes<br/><i>five project roots: BT Managed MCP,<br/>MCP | MOPs, HR Self Service Genie,<br/>GW Semantic MCP, Multi-Genie</i><br/><i>src: kf L47-49</i>"]
+
+    em["ESTATE MONITOR<br/><i>Workato dev project 18242571</i><br/><i>capture → Resolve Scope → Signal Ledger →<br/>Route Incident → Incident State + Slack alert;<br/>2 evaluators; daily report; reaction handler</i><br/><i>src: kf L18-24; ledger</i>"]
+
+    slack["Slack workspace<br/><i>#estate-monitor-ops C0C805U47FZ<br/>bot: Estate Monitor Alerts B0C8HHDA389</i><br/><i>src: kf L15; ledger</i>"]
+
+    jira["Jira — workato.atlassian.net<br/><i>BSYS Bugs (type 10013, 3pts) land in<br/>Josh's queue for jira-autotriage</i><br/><i>src: kf L98-100</i>"]
+
+    connbot["conn: EM | Estate Monitor Alerts Bot<br/>22286384 · Workbot · profile 46357<br/><i>src: kf L13-14; ledger</i>"]
+    connevents["conn: CON | Estate Monitor Events (Slack)<br/>22286593 · Slack connector · profile 46359<br/><i>src: kf L13-14, L105-106</i>"]
+    connjira["conn: Jira<br/>18479504 · integrations.ai@workato.com<br/><i>src: ledger; kf L99</i>"]
+
+    monitored -.->|"stop / failure /<br/>connection events"| recipeops
+    recipeops --> em
+    sched --> em
+
+    em --> connbot
+    connbot -->|"incident alerts, 🟢 recovery pings,<br/>daily 03:00 digest"| slack
+
+    slack -->|"🎫 reaction on an incident alert"| connevents
+    connevents --> em
+
+    em --> connjira
+    connjira -->|"BSYS Bug filed +<br/>🎫 thread reply posted"| jira
+
+    classDef system fill:#e8f0fe,stroke:#3367d6,stroke-width:2px
+    classDef source fill:#fff4e0,stroke:#e8a33d
+    classDef connection fill:#f3e8fd,stroke:#8e44ad
+    classDef external fill:#e8f5e9,stroke:#2e7d32
+
+    class em system
+    class recipeops,slackevents,sched source
+    class connbot,connevents,connjira connection
+    class slack,jira,monitored external
+
+    %% 2026-10-12 first handoff: created both levels fresh from kf + BUILD_LEDGER (tracker not run; edges kf/ledger-sourced) %%

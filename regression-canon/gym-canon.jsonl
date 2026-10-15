@@ -1,0 +1,2 @@
+{"found": "2026-10-09", "assertion": "A4-fleet-prompt-integrity", "status": "open", "detail": "uat-sweep.prompt references unknown agent 'sweep'"}
+{"found": "2026-10-09", "assertion": "A4-fleet-prompt-integrity", "status": "open", "detail": "uat-sweep.prompt references unknown agent 'sweep'"}

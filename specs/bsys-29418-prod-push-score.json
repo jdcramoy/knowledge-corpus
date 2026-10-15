@@ -1,0 +1,112 @@
+{
+  "slug": "bsys-29418-prod-push",
+  "runs": [
+    {
+      "spec": "~/.claude/knowledge/specs/bsys-29418-prod-push.md",
+      "scored_at": "2026-10-09T08:43:11Z",
+      "evidence_count": 4,
+      "total": 4,
+      "met": 4,
+      "partial": 0,
+      "missed": 0,
+      "verdict": "4/4 met (0 partial, 0 missed)",
+      "results": [
+        {
+          "criterion": "Prod recipe 82090477 runs after the push: a post-push job completes with status succeeded on https://app.workato.com/recipes/82090477",
+          "verdict": "MET",
+          "matched_keywords": [
+            "82090477",
+            "app",
+            "com",
+            "https",
+            "job",
+            "post-push",
+            "recipes",
+            "succeeded",
+            "workato"
+          ],
+          "best_evidence": "job j-FAKE1 succeeded on https://app.workato.com/recipes/82090477 post-push at 2026-10-09T12:00Z"
+        },
+        {
+          "criterion": "403 probe returns the envelope: a post-push trace on 82090477 shows the fail-closed envelope (error_code SOURCE_ACCESS_DENIED with upstream_status 403) instead of a raw Forbidden-by-API-server failure",
+          "verdict": "MET",
+          "matched_keywords": [
+            "403",
+            "envelope",
+            "error_code",
+            "probe",
+            "source_access_denied",
+            "trace",
+            "upstream_status"
+          ],
+          "best_evidence": "trace shows error_code SOURCE_ACCESS_DENIED with upstream_status 403 envelope on failed revision probe"
+        },
+        {
+          "criterion": "Failure count flat: the daily failed-job count for 82090477 does not increase in the 24h after the push (workato-health sweep / wt-prod jobs list)",
+          "verdict": "MET",
+          "matched_keywords": [
+            "82090477",
+            "count",
+            "daily",
+            "failed-job",
+            "sweep",
+            "workato-health"
+          ],
+          "best_evidence": "workato-health sweep: daily failed-job count for 82090477 flat vs yesterday"
+        },
+        {
+          "criterion": "MCP tool intact: the served MCP tool backed by 82090477 still lists correctly (mcp_server_get / tool resolver count unchanged) and no VUA personalization drift is observed after the push",
+          "verdict": "MET",
+          "matched_keywords": [
+            "count",
+            "mcp_server_get",
+            "resolver",
+            "served",
+            "tool",
+            "unchanged",
+            "vua"
+          ],
+          "best_evidence": "mcp_server_get confirms served tool listed, resolver count unchanged, VUA End-user connection mode intact"
+        }
+      ],
+      "note": "mechanical keyword-overlap score; a MISSED row may be a matching-vocabulary problem, not a real gap \u2014 read the evidence before judging the build"
+    },
+    {
+      "spec": "~/.claude/knowledge/specs/bsys-29418-prod-push.md",
+      "scored_at": "2026-10-09T08:43:20Z",
+      "evidence_count": 1,
+      "total": 4,
+      "met": 0,
+      "partial": 0,
+      "missed": 4,
+      "verdict": "0/4 met (0 partial, 4 missed)",
+      "results": [
+        {
+          "criterion": "Prod recipe 82090477 runs after the push: a post-push job completes with status succeeded on https://app.workato.com/recipes/82090477",
+          "verdict": "MISSED",
+          "matched_keywords": [],
+          "best_evidence": null
+        },
+        {
+          "criterion": "403 probe returns the envelope: a post-push trace on 82090477 shows the fail-closed envelope (error_code SOURCE_ACCESS_DENIED with upstream_status 403) instead of a raw Forbidden-by-API-server failure",
+          "verdict": "MISSED",
+          "matched_keywords": [],
+          "best_evidence": null
+        },
+        {
+          "criterion": "Failure count flat: the daily failed-job count for 82090477 does not increase in the 24h after the push (workato-health sweep / wt-prod jobs list)",
+          "verdict": "MISSED",
+          "matched_keywords": [],
+          "best_evidence": null
+        },
+        {
+          "criterion": "MCP tool intact: the served MCP tool backed by 82090477 still lists correctly (mcp_server_get / tool resolver count unchanged) and no VUA personalization drift is observed after the push",
+          "verdict": "MISSED",
+          "matched_keywords": [],
+          "best_evidence": null
+        }
+      ],
+      "note": "mechanical keyword-overlap score; a MISSED row may be a matching-vocabulary problem, not a real gap \u2014 read the evidence before judging the build"
+    }
+  ]
+}

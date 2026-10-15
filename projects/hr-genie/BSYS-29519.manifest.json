@@ -1,0 +1,102 @@
+{
+ "export_manifest": {
+  "name": "BSYS-29519 - Collector page-commit wait timeout fix",
+  "assets": [
+   {
+    "id": 82862205,
+    "name": "REC | HR Genie | Conversation Event Collector",
+    "type": "recipe",
+    "version": 44,
+    "folder": "",
+    "absolute_path": "All projects/Agentic | HR Self Service Genie/Intelligence Platform",
+    "root_folder": false,
+    "include_test_cases": false,
+    "unreachable": false,
+    "zip_name": "rec_hr_genie_conversation_event_collector.recipe.json",
+    "deps": [
+     {
+      "id": 13685697,
+      "type": "connection",
+      "name": "Workato API",
+      "unreachable": true
+     },
+     {
+      "id": 20376410,
+      "type": "project_property",
+      "name": "HR Genie Telemetry Environment",
+      "unreachable": false
+     },
+     {
+      "id": 20376413,
+      "type": "project_property",
+      "name": "HR Genie Telemetry Pseudonym Salt",
+      "unreachable": false
+     },
+     {
+      "id": 20376414,
+      "type": "project_property",
+      "name": "HR Genie Telemetry Salt Epoch",
+      "unreachable": false
+     },
+     {
+      "id": 20389088,
+      "type": "project_property",
+      "name": "HR Genie Transcript Key",
+      "unreachable": false
+     },
+     {
+      "id": 20403442,
+      "type": "project_property",
+      "name": "HR Genie Telemetry Genie Handle",
+      "unreachable": false
+     },
+     {
+      "id": 20440945,
+      "type": "project_property",
+      "name": "HR Genie Telemetry Mode",
+      "unreachable": false
+     },
+     {
+      "id": 82862028,
+      "type": "recipe",
+      "name": "FUNC | HR Genie | Emit App Event",
+      "unreachable": false
+     },
+     {
+      "id": 82936791,
+      "type": "recipe",
+      "name": "FUNC | HR Genie | Commit Collector Page",
+      "unreachable": false
+     },
+     {
+      "id": 82959725,
+      "type": "recipe",
+      "name": "FUNC | Record Pipeline Heartbeat",
+      "unreachable": true
+     },
+     {
+      "id": 156849,
+      "type": "workato_db_table",
+      "name": "HR Genie | Telemetry Collector State",
+      "unreachable": false
+     },
+     {
+      "id": 156850,
+      "type": "workato_db_table",
+      "name": "HR Genie | Topic Taxonomy",
+      "unreachable": false
+     },
+     {
+      "id": 158155,
+      "type": "workato_db_table",
+      "name": "HR Genie Encrypted Collector Progress v1",
+      "unreachable": false
+     }
+    ],
+    "checked": true,
+    "note": "BSYS-29519 amended dev fix (v44, 2026-10-14): skip classifier step 45 rebuilt after dissent review - structural 404 matching (status/response/code anchors, 404-not-found adjacency, HTTP 404 adjacency, error_type_id anchor) replacing v42 bare-substring match; timeout-deferral checked before any permanent branch; NEW poll-404 terminal-success disposition (page committed/gone) with recorded unproven-premise caveat. v42's 60s waits + 10-page cap verified live, unchanged. Touched at build start; snapshot at app-snapshots/bsys-29519/."
+   }
+  ],
+  "folder_id": 30275122
+ }
+}
