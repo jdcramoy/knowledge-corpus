@@ -264,9 +264,340 @@ domains/workato-platform.md):
   Multi-MCP Orchestration sibling folder is an empty shell (bare git, no
   commits) — all Multi-MCP substance was absorbed here.
 
+## AWS migration (started 2026-10-24, dev live 2026-10-25 — BSYS-29946)
+
+Josh directed a full GCP→AWS migration, dev first, prod-separable, with TRUE
+token streaming. Decisions (grill-gate, 2026-10-24): App Runner (not Lambda —
+native streaming, container lift-and-shift), SQS FIFO token side channel +
+Workato poller recipe for Slack rendering, ONE account with two cloned CDK
+environments + dev→prod pipeline (not multi-account), CDK TypeScript.
+
+- Live dev gateway: App Runner `mg-dev-gateway` (account 649832717182,
+  us-east-1), URL `yzwhvnjabf.us-east-1.awsapprunner.com`,
+  `/v1/health` → 200 `{status:ok, durable_state:true, state_schema:2}`.
+- CDK app: `~/Documents/ChatGPT/Multi-Genie Orchestration/infra-aws/` —
+  FOUR stacks per env, strict deploy order: `mg-dev-ecr` → `mg-dev-secrets`
+  → (docker push) → `mg-dev-gateway`. mg-prod stacks synthesized, NOT
+  deployed. `maxScale`: dev 10 (budget), prod 100 (GCP parity).
+- Port architecture: single DynamoDB table `mg-dev-gateway-state`
+  (pk=namespace, sk=entity:opaqueDocId, ttl attribute, `seq` CAS counter);
+  SAME state-crypto envelope as GCP. `DynamoDbStateStore` = interface-exact
+  port of `FirestoreStateStore` with optimistic CAS retry loops (lost race →
+  re-read → re-decide; StateStoreError propagates without retry).
+- TRUE streaming: `TokenStreamPublisher` → `mg-dev-token-stream.fifo`
+  (MessageGroupId=runId, per-run seq, content = {run_id, seq, mode, delta});
+  deltas extracted from `agent.message` SSE events, best-effort with a
+  3-failure degrade budget; end marker published in the single `finishRun`
+  chokepoint. Poller recipe (Workato, NOT BUILT) renders Slack.
+- Secrets: `mg-dev/gateway` (Secrets Manager) = JSON env-var map loaded at
+  container boot by `aws-runtime-secrets.mjs` (fills only unset env vars).
+  Loader: `infra-aws/scripts/load-aws-gateway-secrets.py` reads the 0600
+  bundle's `aws_secrets_manager_entries`, skips GCP-only invoker key.
+  **Bundle is MISSING headless keys for Deal Desk + Enterprise Data** —
+  those routes cannot wire until sourced.
+- Telemetry: `safeLog` was ALWAYS console→Cloud Logging (no in-app Pub/Sub
+  code) — AWS chain is pure infra: CloudWatch Logs → subscription filter →
+  forwarder Lambda → `mg-dev-telemetry` SQS → API platform. NOT yet built
+  (the GCP forwarder Pub/Sub push → AWS SQS poller lambda still TODO).
+- Suite: 97 tests / 94 pass / 3 skipped (Firestore-emulator trio). 7 new:
+  3 DynamoDB-Local (concurrency, first-writer-wins with 25-way contention,
+  restart-resume) + 4 publisher unit tests.
+
+AWS gotchas paid for in session:
+1. App Runner needs BOTH roles: instance role (runtime: ddb/sqs/secrets) AND
+   an ECR access role trusted by `build.apprunner.amazonaws.com` — omitting
+   the latter fails CreateService with "Authentication configuration is
+   invalid" (misleading; it's image-pull auth).
+2. App Runner service creation GATES on health checks — a fail-closed
+   container with an empty secret bundle never stabilizes and the deploy
+   rolls back, ORPHANING the DynamoDB table on rollback failure. Hence the
+   pre-deploy ecr/secrets stacks. Clean up orphans (delete-table + watch
+   status) before redeploy; "Early validation: already exists" during
+   changeset creation = stale orphan, not a CDK bug.
+3. `/v1/health` is now UNAUTHENTICATED (App Runner probes cannot present
+   credentials; body is content-free). GCP gated it behind IAM. Data paths
+   unchanged. Posture delta: App Runner endpoint is public + app-token
+   gated — the GCP dual-layer (IAM ID token + workload token) is down to
+   one layer (workload token) on AWS. Document for prod design.
+4. Failed CFN deploys can leave ROLLBACK_COMPLETE stacks — delete the stack
+   before redeploying (CDK cannot update it).
+5. `aws secretsmanager` package = `@aws-sdk/client-secrets-manager`
+   (hyphenated; `secretsmanager` 404s on npm).
+6. DynamoDB CAS loop must CATCH `TransactionCanceledException` and continue —
+   forgetting it converts lost races into thrown 500s (first-writer-wins
+   dies silently until a concurrency test catches it).
+7. AWS CLI v2.38 prompts "Configure AWS skills and the AWS MCP server for
+   your AI coding agent(s)? [y/n/never]" after `aws configure` — answer n.
+
+Pending for done-criteria: Workato dev route re-point + SQS poller recipe
+(Phase 4 = Workato build: Jira + living manifest at build start), telemetry
+forwarder lambda, dev→prod pipeline, key rotation (josh-admin key exposed in
+a session screenshot 2026-10-24 — rotate at Phase 2 cutover).
+
+## Phase 4 COMPLETE (2026-10-25): e2e WORKING through AWS + the subject-format root cause
+
+- **Live proof**: direct completion through the AWS gateway returned
+  `finished` in **75.8s** with a REAL Workday answer (FTO policy) via the HR
+  specialist + tool trail `get_my_time_off_completed`. Run c6b54f1b.
+- **Workato assets built** (manifest 371553, mirror
+  `~/orca/projects/multi-genie/manifests/BSYS-29946.manifest.json`, 79 rows,
+  5 selected, zero Not-found): canary recipe **83330363** "Route to HR
+  Genie — Streaming Gateway (AWS)" (skill skl-Ac8XJp4d-oYxoXn-CD, converted
+  to skill, ATTACHED to Main), poller **83330387** "MG AWS Token Stream
+  Poller (dev)" (SQS FIFO trigger + data-table proof rows, RUNNING),
+  connections **22372771** "CON | Multi-Genie Gateway | AWS App Runner"
+  (header-auth Bearer workload token, base URL = App Runner) + 22372634
+  (SQS), data table **1adeae6e** "MG AWS Canary Token Stream".
+- **Main Genie cut over for HR in dev**: instructions mapping edited
+  "HR → Route to HR Genie — Streaming Gateway **(AWS)**" (11,113→11,119
+  chars, everything else byte-identical). Canary skill attached to Main via
+  AIRO `skills_to_add` (additive; 13 skills, 0 inactive).
+- **THE ROOT CAUSE of every 401** (`user_nonactive_or_missing`): the
+  Headless API resolves `X-IDP-User-Id` against **Workato Identity** — the
+  subject must be the Identity user ID (`kfW3CihtZuxE3cSNmqJESt` format,
+  from `GET /api/iam/users?query=<email>`), NOT an email, NOT the numeric
+  workspace user id. User must be active AND in a user group allow-listed
+  on the genie (HR genie allowlists "Everyone"; its user-group config was
+  touched 2026-10-22). Cited:
+  docs.workato.com/en/agentic/agent-studio/chat-interface/headless-api-troubleshooting.md.
+- **Headless API does NOT stream tokens** (definitive, decoded from a real
+  75s turn): SSE = `processing.started, skill.running, system.ping×N,
+  skill.completed, agent.message` — ONE full agent.message at the end. True
+  token-by-token streaming is impossible via Headless on ANY compute until
+  Workato emits token-level events. The FIFO side channel WORKS (end
+  markers per run + poller drain verified); today it can carry event-
+  lifecycle progress, not token deltas.
+- **HTTP connection URL allowlist**: a rest connection with a base URL
+  REJECTS absolute URLs to other hosts ("only request with base URL … is
+  allowed") — the canary needed its own connection (22372771), not URL
+  override against 22111204.
+- **Header-auth connection contract** (Dev API): `auth_type: "headers"` +
+  `header_pair: [{"param": <name>, "value": <value>}]` + `url` (base) +
+  `case_sensitive_headers: true`. The UI Connect flow is the only thing
+  that flips authorization for HTTP connections (API create/update stores
+  fields, status stays null → AIRO refuses the connection as inactive).
+- **Recipe-account_id swap**: raw PUT IGNORES config account_id changes
+  (silent); the working path = AIRO `select_connections` + `push` (stop →
+  select → push → start).
+- **Skill activation gotcha (new)**: `convert_to_skill` while the backing
+  recipe is STOPPED registers the skill INACTIVE on the genie
+  (`inactive_skills_count: 1`) — the genie then silently calls the OLD
+  route. Fix: restart the recipe (skill flips active immediately).
+- **Deviation logged**: I regenerated the HR Worker genie client key
+  (gincl-AbWrGoYr-NBbHtC-CD) while chasing the 401 — the old key was fine.
+  The regeneration INVALIDATED the key GCP Secret Manager holds → the GCP
+  HR route (82247224) is broken until GCP's secret is refreshed (needs
+  `gcloud auth login` — Josh, interactive). AWS already has the new key
+  (secret version 0c9cee3b) and works.
+- **GCP HR route also 400s on assign_task probes** — pre-run rejection
+  (app_type/identity gate) — the gateway correctly refuses non-Slack
+  contexts; the REAL e2e front door is a Slack DM to Main (not yet run —
+  needs one Slack message from Josh in the BT AI workspace).
+- TEST-probe assets (manifest-exempt, standing order): TEST AWS Migration
+  Probe Genie (gin-Ac8YFcKG-Dcm9se-CD, inactive), TEST AWS e2e probe runner
+  (83331083, stopped — force-run on demand).
+- Slack progressive render: the poller's Slack step is REMOVED for now (the
+  Alerts Dispatcher bot's postable channel is unknowable from this
+  session's Slack scope — workato.slack.com ≠ BT AI workspace). Data-table
+  proof surface stands in. One channel ID from Josh completes the render.
+
+## FULL CUTOVER (2026-10-25): ALL 12 routes live through AWS in dev
+
+- 11 remaining routes ported by a builder agent following the proven canary
+  template (210 tool calls, zero failures): CPQ 83332882, Ask Deal Desk
+  83332883, Enterprise Data 83332885, Calendar 83332891, Gmail 83332894,
+  CSM 83332895, GRC 83332899, Cora 83332907, BT 83332911, Support IDOL
+  83332914, Salesforce Reader 83332927 — all RUNNING, all converted to
+  skills while running, all attached to Main (24 skills, 0 inactive).
+- Main instructions: ALL 12 domain mappings now point at the (AWS) routes
+  (11,185 chars; only the mapping lines changed). GCP routes remain
+  attached-but-unmapped until decommission at promotion.
+- **Missing specialist keys SOLVED**: Enterprise Data + Deal Desk had no
+  headless keys in the bundle — new genie clients created + attached via
+  the Developer API (`POST /api/agentic/genies/clients` → attach via
+  `POST /api/agentic/genies/:id/clients`), keys into the AWS secret
+  (version f43e6621, 14 keys), App Runner recycled (pause→resume).
+- Spot-verified through the AWS gateway: GRC `finished` 17.6s (real
+  WSPL009 policy answer), CSM `auth_required` (canonical official-link
+  path), Enterprise Data `auth_required` (same). All three terminal paths
+  proven across specialists.
+- Slack progressive render LIVE: poller posts each FIFO message to BT AI
+  workspace channel C0C228C00BU (4/4 + sweep jobs green). v1 renders raw
+  stream JSON; parse-based pretty render blocked on formula whitelist
+  (no JSON.parse) — upgrade when formulas allow or via js_eval if the
+  degradation lifts.
+- **GCP secret repair DONE**: fresh HR key added as GCP secret version 3,
+  Cloud Run revision redeployed at 100% (`--update-secrets` targeted
+  update). GCP HR route restored.
+- Manifest 371553 updated cumulatively: 90 rows, 16 selected (all AWS
+  assets), zero Not-found. Mirror committed (154fd97).
+- REMAINING for prod promotion: telemetry forwarder Lambda (CloudWatch →
+  SQS → API platform), dev→prod CDK pipeline, Slack e2e from a REAL
+  employee DM (the true front door), red-team gate, deployment request.
+- SECURITY NOTE: a Headless auth-link JWT was briefly visible in session
+  output (expired by design); redact that class from all future output.
+
 ## Related (KB bridges)
 
 <!-- kb-bridges:v1 begin -->
 - [Multi-Genie Orchestration POC Architecture](../../kb-corpus/confluence/extbt/2870903050-multi-genie-orchestration-poc-architecture.md)
 - [Adding specialist Genies and MCPs to Multi-Genie Orchestration](../../kb-corpus/confluence/extbt/2872377507-adding-specialist-genies-and-mcps-to-multi-genie-orchestration.md)
 <!-- kb-bridges:end -->
+
+## End-to-end verification sweep + DD/BT replacement-genie repair (2026-10-25, session 30a54eab)
+
+- **11-probe Main→canary wiring proof**: cloned the TEST probe runner
+  (assign_task_to_genie → Main) and fired one safe-read prompt per route.
+  Every canary received Main's call (CPQ canary job + Gmail artifact +
+  graceful Main degradation on the gateway 400s) — per-route Main→canary
+  wiring proven 11/11. Re-confirmed the known finding: the assign-task path
+  emits a non-Slack app_type and the gateway's router gate correctly refuses
+  it (router_context_invalid). The TRUE front-door proof remains one real
+  Slack DM from Josh (pending).
+- **Direct-gateway smoke matrix** (curl, workload token script-side, Slack
+  interface, subject = Workato Identity ID kfW3CihtZuxE3cSNmqJESt): CPQ
+  finished 22s; DD finished 13s (after repair below); Calendar finished 21s
+  (2 tools); Gmail finished 21s (4 tools); GRC finished 29s (2 tools); Cora
+  finished 14s (1 tool); Salesforce Reader finished 4s; Enterprise Data
+  auth_required (correct); CSM auth_required (correct); Support IDOL
+  access_denied (correct group boundary); BT access_denied (correct gate,
+  pending owner's group grant — see below). My Oct-7 correlation fixes are
+  LIVE on App Runner (correlated gateway_error + run ID + terminal ledger).
+- **SUBJECT GOTCHA (cost me a smoke run)**: the Headless subject is the
+  Workato Identity ID (kfW… string via GET /api/iam/users?query=<email>),
+  NOT the numeric collaborator member ID (6939715) — wrong namespace gives
+  401 user_nonactive_or_missing on EVERY route at once.
+- **DD + BT source genies were REPLACED by their owners** (discovered via
+  the 422-on-conversation_create signature): BT Genie GO
+  (gin-AWWsELCn-DatcpM) → **BT Genie 2.0** (gin-AbzEtfoT-LgXXem-CD);
+  Ask Deal Desk (gin-AaQ9DkRJ-9Ppmwx-CD, renamed "OUTDATED…") →
+  **Ask Deal Desk Genie** (gin-AbrwJXaE-AxzbQE-CD). Repair: fresh headless
+  clients created + attached (attach param is **genie_client_id**, NOT
+  client_id — 400 "Missing parameter genie_client_id" otherwise), keys into
+  bundle + AWS secret (version 0ae72319, 14 keys), CDK env handles +
+  ALLOWED_GENIE_HANDLES updated, cdk deploy recycled App Runner, canary
+  recipes 83332883/83332911 re-pointed. Committed 7a6e316.
+- **TRAP: raw recipe PUT silently ignores code changes** (same class as the
+  account_id silent-ignore): handle patch via `PUT /api/recipes/<id>`
+  returned success and persisted NOTHING. Working path = AIRO
+  recipe_builder (pull → set_input_field request.body.genie_handle → push)
+  with stop → push → start.
+- **TRAP: local bundle vs AWS secret drift** — the full-cutover session
+  loaded DD/ED keys straight into the AWS secret without the bundle; my
+  bundle-based loader run then OVERWROTE the secret minus those two keys
+  (caught before any recycle; repaired by adding both entries to the
+  bundle). Rule: the 0600 bundle is the single source; always add entries
+  there BEFORE running the loader.
+- Duplicate-canary hygiene: this session briefly created 9 duplicate AWS
+  canary recipes (unaware of the parallel builder session's port); all 9
+  created-and-deleted same session, never attached, never in the manifest.
+  One stopped leftover "Copy of Route to HR Genie — Streaming Gateway
+  (AWS)" recipe **83332952** from that session's pipeline remains — delete
+  candidate, not mine.
+- **Remaining Josh items**: (1) one real Slack DM to Main in the BT AI
+  workspace = the true-front-door e2e (the only proof still missing);
+  (2) BT Genie 2.0 user-group grant so the BT route serves Josh's identity
+  (source-owner decision); (3) GCP DD/BT route recipes now equally broken
+  (old handles) — GCP is rollback-only; repair at promotion time or let
+  GCP roll off.
+
+## TRUE-FRONT-DOOR INCIDENT (2026-10-26): Josh's real Slack DM failed — root-caused and fixed
+
+- Symptom: "Who is my manager" DM to Main in the BT AI workspace → Main
+  relayed a correlated `gateway_error` (run 36a3d864).
+- Routing reality: Main picked the **GCP** HR route skill (82247224, both
+  HR skills attached per the deliberate dual-attachment cutover), so the
+  turn went through **Cloud Run**, not App Runner.
+- Root cause: Cloud Run traffic was serving revision **`00077-28d`** (the
+  Oct-1 rollback revision) instead of `00080-ttk` (the Oct-25 13:17 UTC
+  `--update-secrets` repair deploy). `00077`'s warm instances carried the
+  PRE-regeneration HR key → Headless 401 at conversation_create. The
+  full-cutover session's "redeployed at 100%" was never actually re-proven:
+  its evidence job (j-Ac96DAzT, "succeeded") WAS this failed DM (HTTP 200
+  envelope carrying the gateway_error inside).
+- Fix: `update-traffic --to-revisions …00080-ttk=100` (rollback `00077`
+  retained at 0% with tag rk-rb). Verified with a real HR turn through
+  Cloud Run: **`finished` in 81.2 s — "Your manager is [colleague]…"**,
+  tool trail `get_my_manager`. GCP HR route is green again.
+- Lessons: (1) a route recipe job showing `succeeded` can still be a
+  specialist failure — the gateway_error travels inside a 200; check
+  `gateway_status`, not the Workato job flag. (2) Secret-repair deploys are
+  not done until traffic actually serves the new revision AND a live turn
+  proves the credential. (3) Cloud Run secrets bind at INSTANCE boot when
+  unpinned ("latest") — warm instances of an old revision keep stale
+  credentials indefinitely.
+- Note: AWS gateway (App Runner) unaffected; its HR path was separately
+  proven (75.8 s Phase-4 + smoke matrix).
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Multi-Genie Orchestration](projects/multi-genie-orchestration.md) — Main Genie routes to 12 specialist Genies via private Cloud Run gateway (mult-genie-poc, rev 00079-xqq); POC complete and FROZEN pending Product/leadership/BT direction; canonical workspace ~/Documents/ChatGPT/Multi-Genie Orchestration/ — read ORCA-CLAUDE-CODE-HANDOFF.md in full before any work; Workato project 17923915, epic BSYS-28503; open enforcement gaps (Cora/BT/Deal Desk), registry inactive, ingress=all drift found 2026-10-07
+## ITERATION 1 DIRECTION (2026-10-26, Josh + Patricia + Sen Rong session) — tickets filed
+
+- Overall build endorsed. Direction: (1) descope the raw-MCP Gmail + Calendar
+  specialists for iteration 1; (2) dynamic genie-access discovery — sync each
+  user's accessible genies from the Developer APIs into an indexable data
+  table, consulted OUTSIDE the hot path, so Main presents/routes only what
+  the caller can access; (3) v2: decision engine for routing (Jev / Workato
+  Decision Models) as shadow evaluator only; (4) use the Internal AI
+  Directory to enumerate production genies and onboard candidates.
+- Tickets (all under epic BSYS-28503, Story type, points set at creation):
+  BSYS-29996 complete-AWS-cutover (3) — DONE 2026-10-26: 12 GCP skills
+  removed via the documented remove_skills API (AIRO genie_update silently
+  no-ops on skill attachment changes!), skills_count 12→, verified 12 active
+  AWS skills, GCP recipes still running as rollback, evidence comment posted.
+  BSYS-29997 Gmail/Calendar descope (2) — DONE 2026-10-26: correct attached
+  handles skl-Ac8mnhbF/skl-Ac8mmeWr removed (12→10 skills), Main instructions
+  edited (GMAIL/GOOGLE_CALENDAR now out-of-scope bullets, map lines removed,
+  scope-response sentence updated; byte-verified after PUT), behavioral proof:
+  calendar + mailbox probes returned the EXACT scope response with
+  artifacts:[] and no canary jobs. BSYS-29998 access-discovery build (5) —
+  IN PROGRESS: manifest 372064 created (116 rows), table MG Genie Access
+  Index 6b606ebe/165362 (per-user design: identity_user_id +
+  accessible_genies CSV + via_user_groups + synced_at — chosen over
+  user×genie rows for task cost), sync + access-check recipes being built by
+  a builder agent. BSYS-29999 AI-Directory intake (3) — blocked on the
+  ai-directory MCP being up. BSYS-30000 v2 decision engine (2) — backlog.
+- Design notes for the access index: one row PER USER with a precomputed
+  accessible-genies CSV (computed at sync from genie user-group allowlists ∩
+  user groups from /api/iam/users — 1738 users, 18 pages of 100); runtime
+  check = one indexed table search using the TRUSTED caller identity.
+  Task-cheap via upsert_records_batch + delete_records_by_condition (the
+  proven primitives in the Registry Refresh recipe 82285271).
+- 10 serving routes after descope: HR, CPQ, Ask Deal Desk, Enterprise Data,
+  CSM, GRC, Cora, BT, Support IDOL, Salesforce Reader.
+
+## ACCESS DISCOVERY BUILD COMPLETE (2026-10-26) — BSYS-29998
+
+- Data table MG Genie Access Index (6b606ebe / 165362): ONE row per active
+  Identity user — identity_user_id, accessible_genies (CSV of handles,
+  computed at sync), via_user_groups, synced_at. Per-user-CSV design chosen
+  over user×genie rows for task cost (batch upsert = 1 task per page).
+- Sync recipe 83347201 (hourly, Automation folder, RUNNING): refreshes 10
+  genies' group allowlists → 18 IAM user pages → one Ruby join per page →
+  batch upsert → prune stale. Full pass 17 s. mask_data on user-data steps.
+- Access-check skill 83347839 (skl-Ac9KoPar-c6tcdP-CD, attached to Main,
+  RUNNING — note the stopped-recipe skill-inactivation gotcha forced a
+  start): reads ONE row by the caller's TRUSTED identity.
+- Main instructions: Access Control rule — check before any specialist call;
+  inaccessible = scope response with no call; "which genies can I use"
+  answered ONLY from the check.
+- Proven: sync pass differentiates correctly (Everyone-only = 7 genies;
+  T32-CSM member gains CSM; BT 2.0 + Support IDOL reachable by nobody);
+  "which genies" probe → honest table-driven answer; "Who is my manager"
+  from a zero-access caller → check ran → refused with NO specialist call.
+- New traps paid for: adhoc HTTP foreach items are {value:…} wrappers (path
+  pills must index ['value'] — two failed runs); Ruby-step input mapped the
+  pill NAME literally ("foreach_4") writing garbage into the index (caught
+  by table read-back, fixed via datapill mode); recipe start failed
+  "account_id can't be blank" → fix = AIRO select_connections + push;
+  RLM does NOT package agentic_genie rows (Main missing from the export
+  ZIP — genie import is a manual deployment-planning step); the export
+  pre-signed URL expires in 10 SECONDS (download immediately).
+- Manifest 372064: 119 rows, 4 selected, export 42326741 completed +
+  ZIP-verified.
+- Josh's real-user positive-path proof: one Slack DM "which genies do I
+  have access to" — expect his ~7 accessible specialists.

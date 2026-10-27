@@ -1,0 +1,21 @@
+🎯 Verdict: the add went through today. Susie is now in [TEAM] T32 | CSM, which was the missing piece behind the "not on the list of authorized users" error she saw.
+
+**Done today**
+
+- ✅ Checked the gate group live before touching anything: no match for "shaver", and a control search for a known member returned as expected.
+- ✅ Confirmed her end-user record exists in Workato (she appears in the end-user search, so no invite was needed).
+- ✅ Added her to the group and verified: a member search for "shaver" now returns her, "Showing 1 member".
+
+**One caveat, on the record** ⚠️
+
+- Okta admin is not reachable from my side, so the add went in manually in Workato instead of through the Okta group. Docs say manual adds to an IdP-mapped group can revert at the next sync. If her membership disappears again, the durable fix is adding her to the Okta group ([WORKATO-ID-3535597] [TEAM] T32 | CSM), and I'll move it there.
+
+**Her step, the last one**
+
+- Run the Slack `logout` command against the genie, then re-message the CSM Genie. That picks up the group on a fresh session.
+- If a Confluence auth prompt appears, complete it once.
+- Her first successful conversation is the final confirmation. I'll check for it under AI Hub > Conversations and close this out when it lands.
+
+**Where I could be wrong**
+
+- The working theory is the Firefighter grant never reached the gate group. Why the sync missed her is still open. If the manual add reverts, that is the signal the grant landed in Okta but never synced, and the fix moves to the Okta side.

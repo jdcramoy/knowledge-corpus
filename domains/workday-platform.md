@@ -182,31 +182,9 @@ instead of touching raw WSDL files.
 - [MCP Monday: Content Ops, Minus the Admin Panel](../../kb-corpus/changelog/mcp-monday-content-ops-minus-the-admin-panel.md)
 <!-- kb-bridges:end -->
 
-## Workday developer-site corpus in the KB (built 2026-10-15)
 
-- developer.workday.com is AI-agent-native: `robots.txt` points at
-  `/llms.txt` (curated index). All docs render as Markdown at
-  `/doc/{docId}.md`. REST specs + per-service changelogs are public JSON at
-  `/bundles/rest-directory-ui/public/static/openApiFiles/<specFilePath>` —
-  specFilePath values come from `services_oas3.json` (127 services × 4 tiers:
-  production/preview/experimental/archived). SOAP explorer serves numbered
-  snapshots `soap_services.175.json` (current; .176+ 404) — operation NAMES
-  only; field-level SOAP detail stays in the workday-wsdl-lookup index. Graph
-  API is self-contained: GraphQL `schema.txt` under bundles/graphql-changelog.
-- All of it ingests as the `workday` KB source (`kb/workday_source.py`,
-  nightly core step): 1,383 doc pages + 214 REST spec/changelog markdowns +
-  111 SOAP service docs + Graph schema + tenant WQL alias export (992 data
-  sources / 427K fields → one RAG doc per data source).
-- Tenant WQL alias lookup DB (exact-match, fast):
-  `~/.claude/knowledge/workday/wql-aliases.db` — tables `datasources`
-  (ds_alias, ds_name) and `fields` (ds_alias, field, field_alias), indexes on
-  both field columns. Source xlsx mirrored in corpus/workday/_raw/.
-- Gotchas: developer.workday.com IGNORES If-None-Match (always 200 — full
-  refetch nightly; sha-skip downstream); SPA URL patterns 307→/login, only
-  401 "Token invalid" (e.g. /bundles/<file>) means the path exists but is
-  gated — public static asset dirs (/public/static/) stay anonymous.
-- fetch_all contract fix (kb/common.py 2026-10-15): results now returned in
-  JOB order; as_completed ordering + positional zip had written the asor spec
-  under the absenceManagement path in the workday source. Existing corpora
-  audited clean (15/15 sha-match vs live) — uniform page sizes had kept them
-  aligned by luck, not by contract.
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Workday platform](domains/workday-platform.md) — Workday SOAP/WSDL/WQL knowledge; lookups via global skills workday-wsdl-lookup + wql-query-builder; **developer-site corpus ingested to KB `workday` source 2026-10-15 (llms.txt docs + REST specs/changelogs + SOAP catalog + GraphQL schema + WQL alias export; exact-alias DB at knowledge/workday/wql-aliases.db)**; **legacy-mining 2026-10-10: payment-election security-grant spec absorbed (Payroll Payment Elections domains Get+Put for Employee as Self + Payment Election Enrollment Event BP policy; "task submitted is not authorized" = grant gap), Search_business_object silent worker-scoping drop (both FieldsWith* params, integrity guard + allowlist rule), User_ID vs primaryWorkEmail, REST get_business_process_events 4-BP-type coverage gap→WQL, WQL perf rule (worker indexed/businessProcessType NOT — never filter by type), Ruby date_time Time-object coercion, set_condition no >=/<=**

@@ -190,4 +190,337 @@ Phase-3 rev 2 (Josh corrections, 2026-10-14): NO staging-to-prod — manifest-as
 PHASE 3 FUSION (2026-10-14, kimi-k3+deepseek-v4-pro+glm-5.3-flash, all 3 answered; log: models-evals/fusion.jsonl): top convergent adoptions — Replay Gym (solved incidents → regression farm gating ALL genie-stack changes), Shadow-Doer on-ramp (propose-only weeks → per-route success calibration), earned-autonomy ladder (L0-L3 per route×failure-class; THE intelligence product: falling human cost per fix), verify-before-grade (deterministic harness before the LLM reviewer), KB report cards (retrieval win-rates → self-pruning knowledge estate), value receipts ($X/month avoided as a query), tripwires/coroner/blast-radius graph (new story BSYS-29674, 3pts), approval cards, revert memory, plan-first pass 0 + provenance pins. Epic 29666 now 37pts/8 stories. Spec rev 3; roadmap page v3. HR-genie intelligence flywheel (events API → collector → judge → rollup → gap miner → eval harness → analyst + dashboards; 90-DAY CONTENT PURGE = capture early) is the pattern for the EM intelligence layer, minus encryption/masking (no employee PII in build telemetry).
 SHADOW-MODE ON-RAMP DROPPED (Josh, 2026-10-14): dev is rollback-able; success scores come live during ramp-up. Doer writes from day one.
 PHASE 3.0 BUILD STARTED (BSYS-29667): AI Action Log table 160244 (3fff8d6a-...) created; Build Memory KB kb-AbwxrfxE-znnxrC-CD created; Manifest Link field = customfield_10494 (URL). Remaining: route-catalog KB compile, executor skill (needs Dev API token as secret — Josh), AHQ AI envs (org-level). Shadow-mode dropped by Josh (rollback-able dev).
-REVIEWER TOPOLOGY CORRECTION (Josh, 2026-10-15): the reviewer is NOT a sequential verdict gate — it's a REAL-TIME observer riding the EM | AI Action Log stream (new-record trigger → critique → feedback rows the doer reads before its next action); interjections are themselves memory; terminal verdict + grade at the end. No round-trip pass/round structure; pass cap = fuse only. Also: the Sherpa's AIRO Execution Genie (gin-AbMRcfDh, 96 skills) + run_airo_build_in_steps driver = reusable prior art for the phase-3 write toolkit (adopt, don't rebuild).
+
+## Phase 3.1 live (2026-10-16): send-to-build → Doer
+
+The build leg of the Phase 3 loop is live: `send-to-build` label (requires
+`triaged-by-genie` present) → EM | Capture Build Request (83144038) →
+EM | Builder genie (gin-AbzHEWNT-QzhREk-CD, sonnet-4-6, 3-pass cap) →
+EM Build | Dev API Executor skill (83143984, skl-AbzHDreG-acsnGp-CD) via
+CON | EM Builder Dev API (22328081) → build report on the ticket → label
+`built-by-genie`. Audit: claim-first rows in both EM | Ops Audit Log and
+EM | AI Action Log (160244, contracts synced). Manifest 366787 (11 rows,
+read-back verified).
+
+Hard-won gotchas:
+- Workato API connector v53 token field is "User token" — Dev-API create with
+  `input: {api_token:...}` silently stores nothing → async 401. Fill via UI.
+- AIRO recipe_builder: `move_step` silently no-ops across if/elsif boundaries;
+  elif chains must be contiguous — build sibling ifs instead; `!` and `nil?`
+  are "unsafe/unsupported" in set_condition ruby (use ternary arithmetic);
+  multi-statement ruby (`;`) fails formula validation.
+- The Dev API token (keychain EM_BUILDER_DEV_API_TOKEN) is a federated
+  service-account JWT (wrkaus-eyJ...), region-agnostic (200 on both
+  www.workato.com and app.workato.com).
+- Jira connection 18702724 moved to * Connections (2026-10-20); EM manifests filter connection deps.
+- Pre-image snapshots wired (2026-10-18 late): executor 83143984 writes a
+  Builder | Revert Snapshots (ea56cf30/161968) row BEFORE every PUT/PATCH
+  adhoc call. **UPGRADED 2026-10-19 (real pre-image):** each branch now runs
+  an adhoc GET first (steps 13 PUT / 17 PATCH, mnemonic "pre-image get") and
+  the snapshot stores `'pre-image: ' + body.to_s[0, 3000]` — the actual
+  response body (full recipe JSON for /api/recipes/:id), truncated to 3000
+  chars for the string column. Steps: PUT 13 GET → 14 snapshot → 15 write;
+  PATCH 17 GET → 18 snapshot → 19 write. Version at capture stays "pre-write";
+  revert replay 83152884 consumes the snapshot key. Not yet live-fired on a
+  real PUT/PATCH. Remaining v1 executor gaps: no status code in adhoc output;
+  no rate cap; Reviewer genie (3.2) pending; test story filing blocked on
+  Atlassian MCP re-auth.
+
+## E2E PROVEN (2026-10-16 late): the full Phase 3 build leg works
+
+BSYS-29612 send-to-build test: claim → Doer (read verdict, 2 audited GETs,
+BUILD-COMPLETE no-op, correct contract behavior) → report comment 1141723 →
+built-by-genie → build-complete row. AI Action Log claimed→executed pairs
+live. Dedupe swallowed a duplicate webhook delivery (<1s no-op job).
+**New standing gotcha: Jira real-time triggers started via REST can silently
+skip webhook registration — after REST-start, prove the webhook with a real
+event before trusting the running flag.** v1 gap: executed rows' Evidence
+excerpt is null (adhoc-GET body pill) — fix next pass.
+
+## EVIDENCE HARDENING (2026-10-17): the triage genie can no longer fabricate
+
+Josh's rule (absolute): EVIDENCE is the product. The BSYS-29763 verdict was
+built from the ticket description alone — no live reads. Now: triage genie
+has a step-0 ACCESS GATE (live-read the target recipe via Recipe Details
+first; unreachable = ACCESS-LIMITED verdict, no diagnosis, owning-team
+guidance only) + evidence rule (ticket text is a LEAD; no live read = no
+classification; HIGH confidence requires a personal trace read). Dissenter
+must CONTEST verdicts lacking live reads ("FABRICATION RISK" marker) and
+checks its own access first. Capture recipe 82997363 flips access-limited
+verdicts to `triage-access-limited` (never triaged-by-genie → can never
+fire a build). LIVE-PROVEN on the BSYS-29763 re-run: 3 failed live reads
+named, leads-only language, zero fabrication, CONCUR.
+
+Gotchas: the genie may spell the marker "ACCESS LIMITED" (space) — the label
+swap normalizes (strip spaces/hyphens, match ACCESSLIMITED). Multi-statement
+ruby/regex/local-vars pass set_input_field but fail start with "expression
+is unsafe". `wt manifests update` breaks the in-page /export_manifests/<id>.json
+route (404) — verify manifests by EXPORTING THE PACKAGE and ZIP-inspecting
+(`wt packages export <id>` → poll /api/packages/<op> → download signed URL
+with plain curl) — the strongest verification anyway.
+
+## Builder report style (Josh, 2026-10-17): TIGHT, not verbose
+
+First real build report was "too wordy" — good detail for the record, but the
+same facts appeared in findings + plan + calls. Builder contract now: verdict
+first, every fact ONCE, compact step table, verification caveats only where
+non-obvious, ticket-history narration capped at one line, 30-second scan
+target. Detail belongs in the audit log (EM | AI Action Log), not the comment.
+
+## AI Builder project split (2026-10-18)
+
+Builder/Red-Team/Planner stack moved to the new **AI Builder** project
+(18300022). EM keeps monitoring + triage. Interface = the Jira ticket labels.
+Key ids: Builder genie gin-AbzwXgbY-tho9wC-CD, capture build 83152798,
+executor 83152799, Jira History 82800→83152800, AI Action Log 161960,
+Build Memory kb-AbzwXh8b, Route Catalog kb-AbzwXhJJ, Planner
+gin-AbzwcYko-bBE9oL-CD, Red Team gin-Abzwd8po-fkcpP9-CD (gpt-5.4).
+AIRO MCP: the Builder service token authorizes app.workato.com/airo_mcp
+directly (Bearer, stateless JSON-RPC tools/call — no OAuth dance); the
+executor now accepts absolute-path airo_mcp POSTs (no "delete" in body).
+ACL TRAP: service-account-created projects get "Everyone else in DEV: No
+access" — listed in the UI but the page 404s, AIRO permission-denied, and no
+project_grants POST route exists. Josh flips Access control from the list
+card. Planner = always-plan contract (triage verdict OR epic frame → Build
+Plan → Builder).
+
+**Autonomy ladder (2026-10-18).** Executor 83143984 now gates every call
+through Builder | Autonomy Ladder (161967) BEFORE the claim row: Search
+records eq-filter on Route family with a computed family key (nested ternary,
+exact seeded family strings); Level 0 → audit row (ticket|L0|ts,
+l0_refused) + return L0-PROPOSE-ONLY, nothing executed; no row = default
+level 1. Family vocabulary is recipe-side (Search-records has NO contains
+operand — matching is a dynamic eq value); levels stay table-driven. PUT
+/api/recipes/:id (code updates) and manifests/packages are propose-only.
+set_condition rhs must be BARE (quoted rhs stores literal backslash-quotes).
+
+**Failure-learning on build failures (2026-10-19).** Capture Build Request
+83152798 (BT | AI Builder, v12, running) now writes a postmortem signature
+doc to EM | Build Memory `kb-AbzwXh8b-kxpYwx-CD` (the project-18300022 twin
+of the two same-named Build Memory KBs) on every failure terminal: (a) the
+fail-open catch path after the build_failed audit row, class build-failed;
+(b) after the label swap when it lands build-flagged-security or
+build-needs-review, class security-flagged / needs-review. Mechanism:
+EM | KB Sync (82993520) is a WEBHOOK recipe, not callable — both paths do
+HTTP POST (`rest.make_request_v2`, CON | HTTP 19788749) to
+webhooks.workato.com/.../em_kb_sync with
+`{sync_id, kb_handle, docs:[{id,title,body,source_url}]}`; a JS snippet
+builds the doc id (`build-memory/build-failures/<ticket>-<ts>.md`), title,
+and signature body (route families from the plan, failing-step error,
+caught-by control — no payloads/secrets). Both KB writes sit in
+error-handling monitors (retries 0, empty catch = swallow) so a KB outage
+never flips fail-open. Gotchas confirmed: set_condition rhs must be BARE
+(re-hit live); KB Sync webhook URL is the invocation contract, doc id is the
+upsert key. Manifest BSYS-29667 mirror row re-pointed 83144038→83152798;
+whole-manifest staleness (old project IDs) flagged for Josh.
+
+**Verdict-receipt tamper-evidence upgrade (2026-10-19, fusion CRITICAL #1).**
+Receipts now bind the VERDICT BODY, not just the description. Triage capture
+82997363's consolidator JS (step 12) computes `verdict_hash` (FNV-1a of the
+final comment body) + `desc_hash`; receipt step 19 writes both plus the new
+"Verdict hash" column. Build capture 83152798's gate (step 6 if) is now 4
+clauses: labels AND receipt-exists AND desc-hash-match AND stale-check ==
+'false' — new step 5 JS Date.parse-compares ticket `updated` vs receipt
+`Created at` (fail-open to stale='false'; receipt-exists clause still gates),
+receipt lookup rewired to the regenerated Ticket key field_id. Table 161966
+"Builder | Verdict Receipts" is now 6 cols; ALL field_ids were REGENERATED by
+the AIRO data_table_update (empty table, so no cell loss) and every
+referencing step was rewired same-session. NEW GOTCHA: raw
+`wt api PUT /api/data_tables/:id` with the full columns array SILENTLY
+IGNORES new columns (200s, no error, 3 attempts) — new columns only land via
+AIRO data_table_update, which regenerates every business field_id (refresh
+table_id on each step to re-cache, then re-set all parameter keys). Both
+recipes verified `running:true` by re-GET after restart.
+
+**Builder | KB Search skill (83179640, 2026-10-19):** end-to-end proof
+complete via genie-mediated TEST probe (deleted after). Defect found+fixed:
+the JS formatter's array-pill binding arrived as a Ruby-inspect string, so
+the skill ALWAYS returned count:0 ("No matches found") despite the search
+hitting — bisect-proven (same query/config in a plain step returned 5 docs
+in the same job). Fix = `.to_json` on the pill (`=_dp(...).to_json`) +
+`JSON.parse` guard in the snippet; post-fix proof: count:5, top hit
+"Connections (Route Catalog)" 12513c76d465f52bac111b897a121d6d score 1.0,
+genie answer cited the id. Gotchas re-confirmed: (1) after restarting a
+skill recipe, the FIRST genie conversation can race tool registration and
+report "no such tool" — retry once before diagnosing; (2) the skill's
+kb_name / metadata_filter_json / top_k params are accepted but NOT wired
+(silently ignored; page_size fixed 5) — Josh to decide on ticketing.
+
+## Estate Watchtower v1 (2026-10-19): third project built, then stopped on a heartbeat-source flaw
+
+- New project **Estate Watchtower** — folder 35890140, project_id 18311278 (Data Tables subfolder 35890151). New projects get ZERO project grants → AIRO builder denies folder access until you copy grants: `wt api PUT /api/projects/:id/project_grants` with `{"project_grants":[{"assignment_type":"UserGroup","assignment_id":...,"project_role_id":...}]}` (config param must be a JSON string on raw recipe PUTs).
+- Watcher recipe 83185818 (clock minutes/15 — minutes cadence has NO trigger_at field; WorkatoMonitor(retries=0,sleep=2) fail-open wrapper; `present` operand on `records` pill is the proven emptiness test, `blank` compiles to a string-falsy trap; slack **slack_bot** connector `post_bot_message`, NOT slack.post_message_to_channel — AIRO select_connections can't bind a slack_bot connection to the slack provider, needs raw PUT config). Heartbeats table 162338 / c8a4e0e1-5653-4e46-b2d2-ed8ba3521792.
+- E2E proven (2 force-runs: alerts delivered to #estate-monitor-ops, heartbeat rows landed), then **STOPPED**: the specced heartbeat source — Ops Audit Log AI Builder copy 161961 (uuid 1cdb108a-…; task conflated it with the EM original c4019066-…/158784) — has zero rows EVER; EM original last wrote Oct 11. Captures post to Slack but don't write audit rows routinely ⇒ permanent 15-min false "dark" alarms. Restart after Josh picks the true signal; Asset Registry expected_running row deferred (registering a stopped recipe = perpetual staleness incident).
+- manifest-creation split-guard refuses cross-project DEP rows (connection in EM project, table 161961 in AI Builder) — prepared payload at `orca/projects/estate-monitor/manifests/estate-watchtower-v1-prepared.manifest.json` awaits Josh's ruling.
+
+## Collector Liveness SLO (BSYS-29746, built 2026-10-16, verified live 2026-10-19)
+
+HR Genie collector fleet liveness, traffic-independent (reads state-table watermarks, not traffic —
+a quiet weekend cannot false-alarm, a frozen watermark cannot hide):
+- Recipe [83115194](https://app.workato.com/recipes/83115194) MON | HR Genie | Collector Liveness SLO —
+  hourly, folder 35712141, running. Per registry row: now − last_run > multiplier × interval OR
+  status ∉ healthy set → finding; findings upsert into 161166, cleared findings resolve; ANY finding
+  raises `COLLECTOR_LIVENESS_SLO_BREACH` so the job FAILS LOUD (estate fail-visible pattern).
+- Tables: [Registry 161165](https://app.workato.com/data_tables/f3abf1fe-7706-4edc-889d-787b3d191eb0)
+  (11 rows: 82862205, 82178793, 82863111 ×6 watermarks, 82863906, 82959451 one-shot, 78545249 via
+  aggregate 141250) and [Findings 161166](https://app.workato.com/data_tables/983303e1-21a6-4638-8194-c838d85325c4).
+- Proof: injected stale probe → j-Abxw9sY6-XEnYka-CD FAILED LOUD with STALE+DEGRADED findings;
+  95/96 hourly jobs green through 2026-10-19; probe finding resolved. Manifests 366450 / 366451
+  (UI row-count read-back still pending Josh). Adding a NEW collector = add one registry row; no
+  recipe edit.
+
+## Recovery-evidence gap proven on the stop class + containment plan v2 (BSYS-29808, 2026-10-20)
+
+First proven stop-class resolve-without-audit-row: recipe 82863630 stopped 21s (patricia@,
+03:05:16→03:05:37 PT), registrar 82966985 resolved + 🟢 pinged in 24s, but Ops Audit Log shows
+NO `recovered` transition (opened→ticketed→triage-in-progress→triage_failed) and the auto-filed
+ticket shipped stale. Key structural fact: tickets file via human 🎫 reaction (hours late) while
+auto-recovery is machine-speed — BSYS-29808's `|ticketed` row landed 4h07m AFTER the resolve —
+so ticket surfacing needs BOTH a resolve-time leg (FUNC looks up `|ticketed`) AND a filing-time
+leg (handler 82971161 reads Incident State Status/Resolved at, steps 5/15, and posts/corrects).
+Plan v2 (3pts, dual dissent: CONTEST→revised→CONCUR) posted as comment 1143890; full plan in
+projects/estate-monitor/bsys-29808-recovery-evidence-plan.md. Awaiting Josh's build go.
+Gotchas: incident keys are per-occurrence (timestamp suffix — no cross-cycle dedupe overlap);
+registrar's existing audit keyspace is `recipe_started|<recipe_id>|<job_id>` (no collision with
+`<key>|recovered`); handler's ticket-emoji branch is gated Status=open so B2 must live in the
+robot_face branch inside try(30)/catch(48).
+
+## Collector Watermark FUNC Guard (BSYS-29746 proposal 2, built 2026-10-16, verified + closed out 2026-10-19)
+
+First entry of the collector-framework FUNC library: shared recipe function
+[83115345](https://app.workato.com/recipes/83115345) "FUNC | HR Genie | Inclusive Watermark
+Advance (+1s)" (folder 35712141, running) — inputs `last_wm` + `fallback_seconds`, outputs
+`from_iso` / `basis` (offset | fallback_blank | fallback_unparseable) / `prev_wm`. Guard:
+`from_t = wm_t + 1` (identical to BSYS-29477's inline fix), blank/unparseable → 86400s lookback,
+future watermark raises WATERMARK_IN_FUTURE. Collector 82862205 step 4 calls it; step 5 consumes
+`from_iso`. Equivalence proven from traces both sides (inline boundary pair on BSYS-29477:
+j-AbsPQPwN/j-AbsPQth6; live post-switch run j-Ac3wDpkx: wm 15:00:28 → from_iso 15:00:29Z,
+basis offset; 372/372 FUNC jobs green). New collectors inherit the guard by calling this FUNC —
+never re-inline the offset. Manifests: bundle 366450 (has both assets) + dedicated ZIP-verified
+[368055](https://app.workato.com/export_manifests/368055) (29 rows, connection rows omitted).
+Gotchas: recipe functions export as plain `recipe` manifest rows; job traces age out of job_get
+(cite from the job-list title line); connection rows can break package builds with folder-placement
+mismatches — drop them per BSYS-29667 precedent.
+
+## 2026-10-21 — agent-flow re-verification, dissent consolidation hardening, drift audit
+
+- EM agent flow (recipes + genies + launchd) verified ALL ON; nothing had actually been off.
+- Triage + Dissenter post as ONE consolidated Jira comment (since 82997363 v18, 10-19);
+  2026-10-21 hardened BOTH assemblers (82997363 v19, 82971161 v29) with a `norm()` spacing
+  stage: unescape literal \n, collapse 2+ blank lines, blank line before AND after ##/###
+  headers, single trailing newline. Hot-swapped live, read-back verified, restarted.
+- DataGenie drift estate audit: pipeline is drafts-only (no Snowflake connection in any of
+  the 9 recipes; Apply_Log all "Proposed"); Drift Check/Investigation/Remediation genies
+  stopped 10-20 20:25 PT and left stopped; Drift Fix Genie = drafts-only, Josh said don't
+  touch it. Last-night table deletion has no trace in Workato — decisive trace is
+  Snowflake ACCOUNT_USAGE.ACCESS_HISTORY/QUERY_HISTORY once the table is named.
+
+## 2026-10-22 — PARKED: external-channel triage (#hr-genie-ops)
+- Josh wants 🤖/🎫 triage on the HR Genie watchdog's OWN alerts in #hr-genie-ops
+  (C0BSRRWR2KB, private, bot U0BTJ9HNY8Y) — NOT EM alerts there. Parked until EM is live
+  in prod (BSYS-29559); full design in repo BUILD_LEDGER 2026-10-22. Bot invite prereq:
+  U0C9A0WBB88 must join the private channel (delivery + posting).
+
+## 2026-10-22 — BUILT: Recovery Evidence FUNC (BSYS-29808, plan v2 shipped)
+- FUNC | EM | Recovery Evidence 83290928 (EM Functions folder 35778611): Leg A writes
+  `<incident-key>|recovered` (search-then-create, idempotent — re-run returns
+  `false_recovered_row_exists`), Leg B1 posts the resolve-time recovery comment on the
+  ticketed row's ticket via the /browse/ anchor + [COR] Jira 18702724. Fail-open
+  (retries 0, log-and-swallow catch). Wired: registrar 82966985 step 10 (after resolve
+  claim); ESH 82966998 steps 18/32/44 (degraded/connection/safety-net resolvers);
+  handler 82971161 B2 filing-time leg (monitor 25: if Resolved at -> recovery-facts
+  comment + update_issue corrected business-impact line) at the end of the robot_face
+  filing branch. All running:true, post-push ESH sweep green.
+- Proven live both orderings: ticket-first (BSYS-29902: 1 recovered row + B1 comment,
+  registrar job j-Ac6NKcNm-mzBaxA-CD comment_posted=true) and recovery-first
+  (BSYS-29903/29904: B2 comment + corrected description). Happy path + idempotency:
+  caller 83291371 jobs j-Ac6NHmCM/j-Ac6NHsdd. Fixture tickets are TEST filings.
+- Build lessons: (1) AIRO builder DID auto-rewrite ruby() bindings on insert-renumber
+  this time — the "bindings don't renumber" trap did NOT fire (builder version drift;
+  still verify with recipe_builder_show after every insert). (2) move_step STRIPS the
+  moved step's fields — re-set flow_id/parameters after any move. (3) add_step inside a
+  monitor try APPENDS at try-end regardless of position (3rd confirmation). (4) Unicode
+  in AIRO-set ruby() strings still lands as literal \uXXXX text — write ASCII in machine
+  comments. (5) Package export FAILS when a manifest row references a connection outside
+  the source project ("not found under <project>") — strip * Connections rows (BSYS-29667
+  class) before citing; manifest 370497 read-back + ZIP verified after the strip.
+
+## 2026-10-22 — FIXED: triage-comment formatting (BSYS-29808 scope addition)
+- Both assemblers (handler 82971161 step 48, Capture Triage Request 82997363 step 12) now
+  emit Jira WIKI markup, not GFM: ** -> *, backticks -> {{code}}, ## -> h3., ### -> h4.,
+  ```fences``` -> {code}. The integrations.ai Jira connection renders wiki markup
+  (proven: descriptions with single-* render bold); GFM ** escaped to literal \***.
+- Raw-dump class GUARDED: no consolidation header in the genie output -> minimal formatted
+  fallback posts (verdict line + adversarial check + evidence bullets + suppression note),
+  never the raw dump; the old "[consolidation notice] raw output follows" path is gone and
+  the 1./a. numbered-opener artifact can't survive (detection strips digits/letters/emoji
+  openers before the marker match). Closeout for the triage-genie-raw-output-dumps memory.
+- Proven: probe comments 1146967/1146968 on BSYS-29904 (A/B vs broken 1146951) and REAL
+  pipeline verdict 1146977 on BSYS-29906 (contested->revised path, renders clean).
+- Probe-loop observation: TEST probes got started/stopped by a second AIRO actor
+  ("Workato AHQ | AI") mid-test (probe 2 14:24, probe 1 14:55) — likely the parallel
+  session re-running choreography; FUNC recorded those recoveries correctly. If probe
+  cycles get noisy, add an expected-stop-tolerant flag on Monitor Scope rows (triage
+  suggestion, not built).
+
+## 2026-10-23 — FIXED: build-report formatter (BSYS-29808 scope addition #2)
+- Build pipeline 83144038 (EM | Capture Build Request) step 10 sanitizer got the SAME
+  GFM->wiki contract as the triage assemblers, plus a scaffold strip: drop empty list
+  nodes, flatten indented outline items (the genie's "1.->a.->i. Triage Verdict (as
+  read)" skeleton) to clean h4/paragraph text. Proven end-to-end on BSYS-29904
+  (job j-Ac6RgW4A-GQJQoB-CD -> report comment 1147085, read back clean).
+- Trigger gotcha learned: after a push + stop/start cycle on a jira.updated_issue_webhook
+  recipe, the Jira webhook needs the restart to re-register (two Jira updates delivered
+  nothing until stop/start); labels-only edits may not bump issue `updated` — nudge with
+  a real content update. force-run is scheduler-trigger-only (422 on webhook recipes).
+
+## 2026-10-24 — BUILT: session-scoped audit layer (BSYS-29944, live-verified in dev)
+
+- **EM | Session Log** table 164689 (UUID 020eb6ed, EM audit folder 35873192): session_key =
+  skill-trigger `context.conversation_id` (native — no new plumbing), actor, action, target,
+  reason, confidence, outcome (executed|l0_refused|refused|reconciler_run|unattributed_change),
+  ticket_key, payload_ref, occurred_at. Queryable index; full request/response JSONL per session
+  in FileStorage at `/em-audit-<conversation_id>.jsonl` (flat — see gotcha below).
+- **Both executors gained 2 steps** (83143984 v1 + 83152799 v2, both running): FileStorage append +
+  Session Log row via the data-tables records API. Verified live end to end on BOTH: v2 job
+  j-Ac8CCxWn, v1 job j-Ac8CeEWC (real genie call, full chain, real conversation ID in the row).
+- **Ladder hardening:** `/api/agentic/* (genie lifecycle)` = level 0 (propose-only) — live probe
+  returned L0-PROPOSE-ONLY with audit row (j-Ac8CJzLn). Genie start/stop/create can no longer be
+  executed by the Builder genie without Josh. v1 family-key updated; v2 ladder-gate parity deferred.
+- **Reconciler** [83326270](https://app.workato.com/recipes/83326270) (daily 1440min, running):
+  fetch inventory (2 pages) → try-read prior snapshot (catch = first-run baseline, logger marker)
+  → **drift gate FIRST** (js throws "EM INVENTORY DRIFT: created=[...] deleted=[...]" — the failed
+  job IS the alert) → Session Log row → snapshot overwrite. Gate-before-snapshot ordering is
+  load-bearing: a drifted run must never re-baseline. Drift-throw NOT yet proven — blocked by the
+  schema-service degradation (below); self-heals on recovery.
+- **Probe harness:** TEST BSYS-29944 session-audit probe 83326118 (manifest-exempt, stopped):
+  clock 60min + workato_genie assign_task_to_genie — the reliable skill-invocation test surface
+  (headless API not enabled in this workspace; MCP gateway doesn't serve these skills).
+- **Manifests 371307/371310 need UI REBUILD** — created via create_manifest.py before the
+  2026-10-24 doctrine change (UI-built only). Rebuild via RLM > New manifest before promotion.
+
+### 2026-10-24 (later) — deferred items CLOSED
+- **Reconciler drift-throw PROVEN**: job j-Ac8DCazx failed with `EM INVENTORY DRIFT (BSYS-29944):
+  created=[] deleted=[...named tables...]` — the failing job IS the alert. Re-baseline flow proven
+  (snapshot delete → baseline → clean); reconciler steady on a fresh snapshot. Gotchas: delete_file
+  reports "File not found" even when it works; FileStorage content pill is a stub string in traces
+  (lazy-load display) but delivers real bytes to js_eval.
+- **v2 ladder gate deployed** via records-API query (`POST /api/v1/tables/:uuid/query`, server-side
+  where-filter on Route family) — immune to the schema-service degradation. Start-validated, running.
+  Live-fire through a healthy genie is IMPOSSIBLE by design: the genie reads the ticket + ladder KB
+  and refuses at its own policy layer ("Route Blocked: /api/agentic/* is Level 0") — defense-in-depth
+  confirmed. Executor-gate live-fire = component verification only (start validation + curl-verified
+  shapes + v1's identical live-proven mechanism).
+- Formula-transpiler traps: ruby hash literals in formulas → `# INVALID RUBY FORMULA` corruption
+  (build JSON by string concat + to_json); condition bindings must use TYPED pills (root pills → nil
+  at runtime); formula whitelist has no map/sort/size/to_h/JSON.generate/iso8601.
+- Manifests 371307/371310 still need the UI rebuild (Josh).
+
+**+ 2026-10-26 (verdict run):** watcher v1 83185818 was DELETED 2026-10-20 (delete-and-rebuild, cortex/investigations/recipe-deletions-404-1021.md); v2 83196679 "Estate Watchtower | Watcher" is an UNFINISHED STUB (empty trigger, 0 jobs) — the 352-353 section above describes the pre-rebuild state and the one-field table_id repoint is now moot (v1 gone). Watchtower still dark; finishing v2 (with heartbeat source 158784, row-flow re-verified at build time) is an open builder-session task. Full re-verify block in dreams/proposals/2026-10-20-em-watchtower-heartbeat-repoint.md.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Estate Monitor](projects/estate-monitor.md) — **estate-wide Workato monitoring platform** (epic BSYS-29554; canonical repo ~/orca/projects/estate-monitor/ — CLAUDE.md + docs/estate-monitor/HANDOFF.md + BUILD_LEDGER.md); dev project 18242571, 11 recipes + 6 tables + reaction handler; phase 1 (alert→🎫→auto-assigned BSYS Bug→thread reply, idempotent) LIVE+UAT in dev; phase 2 filed (29565 Triage Genie read-only on 🤖, 29566 local harness hook) awaiting swarm; prod promotion 29559 Josh-gated; standing rules: monitors never monitor monitors (zArchive + estate monitor + operational monitoring exclusions in-resolver), claim-first recovery, audit everything

@@ -1,84 +1,104 @@
-# KB digest — brain-gardener — 2026-10-14
+# KB digest — brain-gardener — 2026-10-27
 
 ## Change surface (nightly sync)
-- no changes since previous sync
+- docs: 9 docs changed
+- blog: 88 docs changed
+- changelog: 10 docs changed
+- inspiration: 19 docs changed
+- eip: 103 docs changed
+- claude: 663 docs changed
+- temporal: 10 docs changed
+- n8n: 1361 docs changed
+- prefect: 329 docs changed
+- restate: 213 docs changed
+- mcp: 357 docs changed
+- slack: 3227 docs changed
+- snowflake: 9184 docs changed
+- dbt: 9 docs changed
+- trigger: 30 docs changed
+- hf-hub: 3 docs changed
+- secondary corpora (non-Workato): 15386 docs changed (excluded from the quiet-night floor)
+- DELTA 229 workato-owned changed docs (> 50 floor) — this night is NOT quiet regardless of lens results
 
 ## Lens queries (live retrieval)
 
 ### platform claims surface
-_query: `API behavior limits formulas` (source: docs) — confidence 3.418 bits_
-1. [docs] API Access Policies
-   https://docs.workato.com/en/api-mgmt/api-access-policies.md
-   ## Formula limitations  Workato allows you to [use formulas to transform requests and responses](#transform-data-with-workato-formulas), offering flexibility to dynamically transform data. While most ...
-2. [docs] API concurrency
-   https://docs.workato.com/en/api-mgmt/api-concurrency.md
-   ### Supported formulas  A limited set of Workato formulas is supported when configuring custom authorization expressions. This list is non-exhaustive, and additional Ruby methods may be supported beyo...
-3. [docs] Developer API - Endpoints
+_query: `API behavior limits formulas` (source: docs) — confidence 3.479 bits_
+1. [docs] Custom authorization
+   https://docs.workato.com/en/api-mgmt/custom-authorization.md
+   ## Configure custom authorization  Complete the following steps to configure custom authorization for an API endpoint:  1. Go to **Platform > API platform > API collections**.     2. Select the API co...
+2. [docs] Apply API proxy transformations
+   https://docs.workato.com/en/api-mgmt/api-proxy-transformation.md
+   ### Example formula transformation  You can use formulas to define default values for request parameters. For example, you can define a request parameter with a formula to set a default value if the i...
+3. [docs] Embedded API - MCP servers
+   https://docs.workato.com/en/oem/oem-api/mcp-servers.md
+   ### URL parameters  | Name | Type | Description | | --- | --- | --- | | managed\_user\_id | **string** _required_ | Embedded customer Account ID or External ID. External IDs must have the prefix `E` a...
+4. [docs] Rate limiting
+   https://docs.workato.com/en/recipes/rate-limiting.md
+    # Rate limiting  Most APIs have a cap on the number of API calls you can make within a certain period. These limits usually differ by app.  In cases whereby the rate limits may have been reached, the...
+5. [docs] Developer API - Endpoints
    https://docs.workato.com/en/workato-api/resources.md
    ## Project properties  | Type | Resource | Description | | --- | --- | --- | | GET | [/api/properties](/en/workato-api/project-properties#list-project-properties) | List project-level properties that ...
-4. [docs] Embedded API rate limits
+6. [docs] Embedded API rate limits
    https://docs.workato.com/en/oem/oem-api/limits.md
    | Collection | Type | Resource | Quota | | --- | --- | --- | --- | | **API clients** | GET | List Developer API Clients: [/api/v2/managed\_users/:managed\_user\_id /developer\_api\_clients](/en/oem/oe...
-5. [docs] Manage API clients and applications
+7. [docs] Manage API clients and applications
    https://docs.workato.com/en/api-mgmt/api-client-mgmt.md
-   ## View and manage applications  The **Applications** tab on a client lists every application created for that client, showing the credential type, the configured rules or key, and whether the applica...
-6. [docs] Action and fields errors
-   https://docs.workato.com/en/recipes/design-time-errors/empty-actions.md
-    # Rate limiting  Most APIs have a cap on the number of API calls you can make within a certain period. These limits usually differ by app.  In cases whereby the rate limits may have been reached, the...
-7. [docs] Troubleshooting - Formula troubleshooting
+   ### Create a new application  Complete the following steps to create a new application:  1. Go to **API Platform > Clients**, select the client, and go to the **Applications** tab.     2. Click **\+ C...
+8. [docs] RecipeOps - API policy rate limit violation trigger
+   https://docs.workato.com/en/connectors/recipeops/triggers/rate-limit-violation.md
+    # RecipeOps - API policy rate limit violation trigger  Actively monitors API usage across all access profiles and generates events when an access profile exceeds its assigned rate limits. It creates ...
+9. [docs] Troubleshooting - Formula troubleshooting
    https://docs.workato.com/en/troubleshooting/formula-troubleshooting.md
    ### Solution  Complete the following steps to extract the first value from an array:  1. Go to the recipe step with a field that accepts array input.     2. Activate **Formula** mode in the field wher...
-8. [docs] Canvas
-   https://docs.workato.com/en/canvas.md
-   ### Conditional actions for error handling  IF conditions enable you to control how your recipe responds to different types of errors. You can add them inside an **On error** block or elsewhere in the...
-9. [docs] Formulas
-   https://docs.workato.com/en/formulas.md
-    # Formulas  Users can use formulas to transform data using Workato. Formulas allow users to easily work with and format data. Formulas in Workato are included in allowlists of Ruby methods. Not all R...
-10. [docs] Infinite loops
-   https://docs.workato.com/en/recipes/infinite-loops.md
-   ## Run-time formula errors  Every input field (except for list input fields) can be toggled between text and formula mode. Formulas that didn't throw any design-time errors when the recipe was started...
-11. [docs] Common recipe errors
-   https://docs.workato.com/en/recipes/design-runtime-error.md
-   ## Rate limit revisions  We understand that each business has unique event processing needs. Our goal is to support your objectives by offering flexible rate limits tailored to your specific requireme...
+10. [docs] Date formulas
+   https://docs.workato.com/en/formulas/date-formulas.md
+   ### Behavior  The formula behaves differently depending on how you call it:  - **No argument** - Returns Pacific Time: `now.in_time_zone` - **Timezone specified** - Converts to the specified timezone:...
+11. [docs] Recipe editor
+   https://docs.workato.com/en/recipes/editor.md
+   ## Configure a recipe step  Select a step to open its configuration panel, where you set up what the step does. Configuring an app step involves selecting the app, the trigger or action, and the [conn...
+12. [docs] Formula mode - Add conditions to formulas
+   https://docs.workato.com/en/formulas/conditions.md
+   ### Behavior  #### `condition`  A boolean expression that evaluates to `true` or `false`.  #### `expression1`  Returns this expression if `condition` is `true`.  #### `expression2`  Returns this expre...
 
 ### claude platform changes
-_query: `API features limits` (source: claude) — confidence 3.53 bits_
-1. [claude] Spend Limits API
+_query: `API features limits` (source: claude) — confidence 3.546 bits_
+1. [claude] Rate limits
+   https://platform.claude.com/docs/en/api/rate-limits.md
+   ## About rate limits  * Limits are designed to prevent API abuse, while minimizing impact on common customer usage patterns. * Limits are defined by **usage tier**. Organizations are placed on a tier ...
+2. [claude] Spend Limits API
    https://platform.claude.com/docs/en/manage-claude/spend-limits-api.md
    ## Overview  The API exposes eight endpoints across two resources:  | Resource                          | Endpoints                                                                                     ...
-2. [claude] Rate limits
-   https://platform.claude.com/docs/en/api/rate-limits.md
-    <Note>   This compatibility layer is primarily intended to test and compare model capabilities, and is not considered a long-term or production-ready solution for most use cases. While it is intended...
-3. [claude] Rate Limits API
-   https://platform.claude.com/docs/en/manage-claude/rate-limits-api.md
-     foreach ($rateLimits->data as $entry) {       $models = $entry->models ? ' (' . implode(', ', $entry->models) . ')' : '';       echo "{$entry->group->type}{$models}\n";       foreach ($entry->limits...
+3. [claude] List Organization Rate Limits (Beta)
+   https://platform.claude.com/docs/en/api/beta/organization/rate_limits/list.md
+    # List Organization Rate Limits  **GET** `/v1/organizations/rate_limits`  List Messages API rate limits for your organization.  Each entry corresponds to one rate-limit group (either a model family o...
 4. [claude] Rate Limits
-   https://platform.claude.com/docs/en/api/organization/workspaces/rate_limits.md
-   ### Query parameters  - `group_type: optional "batch" or "files" or "model_group" or 3 more`    Filter by group type.    - `"batch"`    - `"files"`    - `"model_group"`    - `"skills"`    - `"token_co...
-5. [claude] Rate Limits (Beta)
+   https://platform.claude.com/docs/en/api/organization/rate_limits.md
+    # Rate Limits ...
+5. [claude] Structured outputs
+   https://platform.claude.com/docs/en/build-with-claude/structured-outputs.md
+   ### Schema complexity limits  Structured outputs work by compiling your JSON schemas into a grammar that constrains Claude's output. More complex schemas produce larger grammars that take longer to co...
+6. [claude] Rate Limits (Beta)
    https://platform.claude.com/docs/en/api/beta/organization/rate_limits.md
-   ### Query parameters  - `limit: optional number`    Number of items to return per page.    Defaults to `20`. Ranges from `1` to `1000`.    default: 20, minimum: 1, maximum: 1000  - `page: optional str...
-6. [claude] Permissions
-   https://platform.claude.com/docs/en/api/compliance/organizations/roles/permissions.md
-   ### List Organization Rate Limits  **GET** `/v1/organizations/rate_limits`  List Messages API rate limits for your organization.  Each entry corresponds to one rate-limit group (either a model family ...
-7. [claude] Rate Limits (Beta)
+    # Rate Limits ...
+7. [claude] Rate Limits
+   https://platform.claude.com/docs/en/api/organization/workspaces/rate_limits.md
+    # Rate Limits ...
+8. [claude] Rate Limits API
+   https://platform.claude.com/docs/en/manage-claude/rate-limits-api.md
+   ## Filtering by group type  Both endpoints accept an optional `group_type` query parameter that restricts the response to a single category:  <CodeGroup>   ```bash cURL   curl "https://api.anthropic.c...
+9. [claude] PDF support
+   https://platform.claude.com/docs/en/build-with-claude/pdf-support.md
+   ### Check PDF requirements  Claude works with any standard PDF. Ensure your request size meets these requirements:  | Requirement               | Limit                                                 ...
+10. [claude] Claude Sonnet 5.5
+   https://platform.claude.com/docs/en/models/sonnet-5-5/overview.md
+   ## Good to know  * Adaptive thinking is on by default. The lowest thinking setting is `between_tools`, which turns off up-front thinking. It works at `high` effort or below. See [What's new in Claude ...
+11. [claude] Rate Limits (Beta)
    https://platform.claude.com/docs/en/api/beta/organization/workspaces/rate_limits.md
-   ## List Organization Rate Limits  **GET** `/v1/organizations/rate_limits`  List Messages API rate limits for your organization.  Each entry corresponds to one rate-limit group (either a model family o...
-8. [claude] Service tiers
-   https://platform.claude.com/docs/en/api/service-tiers.md
-   ## Rate limits  The rate limits for the Messages API are measured in requests per minute (RPM), input tokens per minute (ITPM), and output tokens per minute (OTPM) for each model class. If you exceed ...
-9. [claude] Spend Limits (Beta)
-   https://platform.claude.com/docs/en/api/beta/organization/spend_limits.md
-   ### Query parameters  - `limit: optional number`    Maximum number of limits per page. Defaults to `20`.    default: 20, minimum: 1, maximum: 1000  - `page: optional string`    Opaque cursor from a pr...
-10. [claude] Models (Beta)
-   https://platform.claude.com/docs/en/api/beta/models.md
-   ### Query parameters  - `limit: optional number`    Number of items to return per page.    Defaults to `20`. Ranges from `1` to `1000`.    default: 20, minimum: 1, maximum: 1000  - `page: optional str...
-11. [claude] List Spend Limit Increase Requests (Beta)
-   https://platform.claude.com/docs/en/api/beta/organization/spend_limits/increase_requests/list.md
-   ## Query parameters  - `limit: optional number`    Maximum number of limits per page. Defaults to `20`.    default: 20, minimum: 1, maximum: 1000  - `page: optional string`    Opaque cursor from a pre...
-12. [claude] Permissions (Beta)
-   https://platform.claude.com/docs/en/api/beta/organization/rbac_roles/permissions.md
-   ### Query parameters  - `limit: optional number`    Maximum results (default: 1000, max: 1000)    default: 1000, minimum: 1, maximum: 1000  - `page: optional string`    Opaque pagination token from a ...
+    # Rate Limits ...
+12. [claude] Usage and Cost API
+   https://platform.claude.com/docs/en/manage-claude/usage-cost-api.md
+   ## See also  Use the Usage and Cost APIs to deliver a better experience for your users, manage costs, and preserve your rate limit. Learn more about some of these other features:  * [Admin API](https:...
 
 ## Your job
 Opinion: does anything in the change surface invalidate or strengthen existing claims (clm-*)?

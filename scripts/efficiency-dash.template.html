@@ -63,7 +63,7 @@ th { color:var(--text-secondary); font-weight:600; }
 
   <div class="card">
     <h2>Tokens per unit of shipped work — trailing 3-day (the headline)</h2>
-    <p class="note">Total tokens (in+out+cache) over trailing 3 days ÷ work units over the same 3 days. Per-closeout panel: SOLID = trailing window fully covered by the registry (from 10-13); DOTTED = denominator estimated from story-point density (points ÷ points-per-closeout) for days the registry didn't yet cover — including 10-11/12, whose trailing windows contain pre-registry days. The 10-11 hump is real token burn against a thin denominator, not a data error. Dots: day the optimization shipped.</p>
+    <p class="note">Total tokens (in+out+cache) over trailing 3 days ÷ work units over the same 3 days. Per-closeout panel: SOLID = trailing window fully covered by the registry (from 10-13); DOTTED = denominator estimated from story-point density (points ÷ points-per-closeout) for days the registry didn't yet cover — including 10-11/12, whose trailing windows contain pre-registry days. The 10-11 hump is real token burn against a thin denominator, not a data error. Numbered badges on dashed lines: days an optimization shipped — numbers keyed to the footnote below.</p>
     <div class="legend">
       <span><span class="sw" style="background:var(--s1)"></span>per closeout (own scale; dotted = projected from story-point line)</span>
       <span><span class="sw" style="background:var(--s2)"></span>per build action (own scale)</span>
@@ -160,16 +160,23 @@ function xTicks(g, n) {
 }
 
 function annotations(g, yMax, vMax) {
-  let s = '';
+  // Event markers: dashed line + numbered badge at the top of the line.
+  // Full label text lives in the footnote (numbered) — in-plot text collided
+  // whenever events landed on adjacent days, and every panel repeated it.
+  const byDay = new Map();
   DATA.annotations.forEach((d, k) => {
     const i = rows.findIndex(r => r.day === d);
     if (i < 0) return;
+    if (!byDay.has(d)) byDay.set(d, { i, nums: [] });
+    byDay.get(d).nums.push(k + 1);
+  });
+  let s = '';
+  byDay.forEach(({ i, nums }) => {
     const x = xScale(i, rows.length);
-    const y = M.t + (H - M.t - M.b) * (1 - vMax(k) / yMax);
-    const right = i > n / 2;
+    const label = nums.join(',');
     s += `<line x1="${x}" x2="${x}" y1="${M.t}" y2="${H - M.b}" stroke="${css('--grid')}" stroke-dasharray="3 3"/>` +
-         `<circle cx="${x}" cy="${y}" r="4" fill="${css('--accent')}" stroke="${css('--surface-1')}" stroke-width="2"/>` +
-         `<text class="ann" x="${x + (right ? -8 : 8)}" y="${M.t + 10 + (k % 2) * 16}" text-anchor="${right ? 'end' : 'start'}">${DATA.annotation_labels[k]}</text>`;
+         `<circle cx="${x}" cy="${M.t + 11}" r="8.5" fill="${css('--surface-1')}" stroke="${css('--accent')}" stroke-width="1.5"/>` +
+         `<text class="ann" x="${x}" y="${M.t + 14.5}" text-anchor="middle" font-weight="600">${label}</text>`;
   });
   g.innerHTML = s;
 }
@@ -354,7 +361,7 @@ document.getElementById('table').innerHTML = '<table><tr><th>day</th><th>tokens<
 
 document.getElementById('foot').textContent =
   `Sources: usage-ledger (turn-usage), mission-control events (closeouts), build-ledger, Jira BSYS day-bounded closed queries (story points), session transcripts (failure rates). ` +
-  `Optimizations marked: ${DATA.annotation_labels.join(' · ')}. Cost calibrated to ACTUAL Grafana basis $5,045/30d — daily $ is calibrated throughput, not nominal rates.`;
+  `Optimizations marked: ${DATA.annotation_labels.map((l, k) => `${k + 1}: ${l}`).join(' · ')}. Cost calibrated to ACTUAL Grafana basis $5,045/30d — daily $ is calibrated throughput, not nominal rates.`;
 
 function fmt2(v) { return (v ?? 0).toLocaleString(); }
 function fmt3(v) { return (v ?? 0).toLocaleString(undefined, {maximumFractionDigits: 0}); }

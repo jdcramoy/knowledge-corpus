@@ -129,3 +129,10 @@ as the general shape for every agent-facing surface (otto-house-style).
 - [The Agentic Workato Harness: a self-improving development organism](../../kb-corpus/confluence/extbt/2938830860-the-agentic-workato-harness-a-self-improving-development-organism.md)
 - [Workato Enterprise MCP: The Future of Agentic Automation](../../kb-corpus/blog/workato-mcp.md)
 <!-- kb-bridges:end -->
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Agentic platform lessons](domains/agentic-platform-lessons.md) — **+HARD-EARNED 2026-10-10: green jobs + path proofs don't measure population — our own repair pass under-collected 100× with passing empty/404-path proofs; every loop/collection proof needs a volume assertion on what LANDED, specified in the task, not left to the builder; Otto codebase study (2026-10-09): 12 code-cited lessons → Workato mappings** (verification throughput doctrine — change sandboxes REJECTED for Workato, fixed AHQ workspace, do not re-propose; done=durable evidence, per-component failure classification, two-signal rule, three-is-a-pattern, rotation-safe credentials, cache-prefix discipline, unconfigurable guardrails, versioned idempotency, lossy-core/durable-edges, observability out of the failure domain, delivery+governance around a thin loop); three-way attribution (native Otto vs Josh's semantic-gateway invention vs harness ports); skills otto-house-style (repo operator's manual + gws-semantic-gateway convergence rules), playbook/skill-builder/testcase-authoring/slack-bot-connection/airo-mcp-playbook carry the integrated checks

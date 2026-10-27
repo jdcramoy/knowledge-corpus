@@ -55,9 +55,11 @@ Witness independence labels (--independence):
 """
 
 import argparse
+import calendar
 import glob
 import json
 import os
+import re
 import sys
 import time
 
@@ -79,10 +81,31 @@ def parse_since(s):
 
 
 def _ts(ts):
+    """Epoch seconds for an ISO-8601 ts, timezone-aware.
+
+    2026-10-16 fix: the old version sliced the Z off and fed the naive
+    remainder to time.mktime (which assumes LOCAL time), so every UTC
+    Z-suffixed row shifted by the local UTC offset (+4h in New York) —
+    TTL expiry and the --since window were both wrong by that much.
+    Z rows are UTC (calendar.timegm, no local shift); explicit +hh:mm
+    offsets convert tz-aware; naive rows keep the legacy local reading;
+    numeric-epoch strings pass through."""
+    s = str(ts).strip()
     try:
-        return time.mktime(time.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S"))
+        return float(s)
+    except ValueError:
+        pass
+    try:
+        t = time.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
     except Exception:
         return 0.0
+    if s.endswith("Z"):
+        return calendar.timegm(t)
+    m = re.search(r"([+-])(\d{2}):?(\d{2})$", s)
+    if m:
+        off = int(m.group(2)) * 3600 + int(m.group(3)) * 60
+        return calendar.timegm(t) - (off if m.group(1) == "+" else -off)
+    return time.mktime(t)
 
 
 def thread_of(ev):
@@ -142,6 +165,31 @@ def load_events(bus_dir, since, only_agent=None):
                     events.append(ev)
         except OSError as e:
             print(f"warn: cannot read {path}: {e}", file=sys.stderr)
+
+    # Fan-in dedup (triage bus-writer-duplicate-malformed-lines, 2026-10-22):
+    # writers posted exact repeats (dissenter findings 5-8x) before the
+    # write-time gate existed. Collapse rows with identical content (every
+    # field except ts), keeping the earliest ts — a repeat adds no
+    # information and inflated corroboration tallies. History files are
+    # never rewritten; this collapses at merge time only.
+    seen: dict[str, dict] = {}
+    for ev in events:
+        try:
+            key = json.dumps(
+                {k: v for k, v in ev.items() if k != "ts"},
+                sort_keys=True, default=str)
+        except Exception:
+            key = id(ev)
+        prev = seen.get(key)
+        if prev is None:
+            seen[key] = ev
+        else:
+            try:
+                if str(ev.get("ts", "")) < str(prev.get("ts", "")):
+                    seen[key] = ev
+            except Exception:
+                pass
+    events = list(seen.values())
 
     # TTL expiry (skip events older than their ttl)
     fresh = []
@@ -296,18 +344,23 @@ def motif_of(ev, motif_slugs):
 
 
 def ts_sort_key(e):
-    """Comparable key across MIXED ts shapes: ISO strings, epoch floats/ints,
-    None. (Strike 3 on this bug class: turn-audit.jsonl carries raw epoch
-    floats; a str() key breaks float-vs-str comparison.) Groups by shape
-    first, so every group compares within its own type."""
+    """Comparable key across MIXED ts shapes: ISO strings (Z / offset /
+    naive), epoch floats/ints, epoch-STRINGS, None. (Strike 3 on this bug
+    class: turn-audit.jsonl carries raw epoch floats; a str() key breaks
+    float-vs-str comparison. 2026-10-16: shape-GROUPING first avoided the
+    crash but still mis-ordered — every numeric row landed before every
+    string row regardless of real time. Now every parsable shape normalizes
+    to epoch via _ts (tz-aware) and interleaves chronologically; only
+    unparsable/missing rows sink to the end group."""
     ts = e.get("ts")
     if isinstance(ts, bool):
-        return (2, 0.0, "")
+        return (2, 0.0)
     if isinstance(ts, (int, float)):
-        return (0, float(ts), "")
+        return (0, float(ts))
     if isinstance(ts, str) and ts:
-        return (1, 0.0, ts)
-    return (2, 0.0, "")
+        v = _ts(ts)
+        return (0, v) if v else (2, 0.0)
+    return (2, 0.0)
 
 def main():
     ap = argparse.ArgumentParser()

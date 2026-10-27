@@ -17,12 +17,21 @@ job runs (is_test_case_job=true in the job payload) are excluded too: a
 recipe's failed test case is authoring noise, not a recipe failure. Everything
 is read-only against Workato.
 
+Test-noise window (accepted proposal 2026-10-12-typed-sweep-findings, reduced
+form): recipes flagged in knowledge/workato-health-scope-flags.json (the
+consumer-side stand-in for a 'test_noise_window' column on EM | Monitor Scope
+158779 — the column cannot be added programmatically without wiping the
+table) have their new-failures findings routed to the DAILY DIGEST
+(workato-health/digest/<day>.jsonl, rendered nightly by harness-health)
+instead of the realtime triage/bus page. Flags expire on their 'until' date;
+digest-downgrade, not suppression — sweep rows still record every failure.
+
 Usage:
   workato-health.py               run sweep
   workato-health.py --dry-run     select assets, call nothing
   workato-health.py --json        summary as JSON
 """
-import fcntl, json, os, subprocess, sys, tempfile, time, datetime as dt
+import fcntl, json, os, re, subprocess, sys, tempfile, time, datetime as dt
 from atomic_io import atomic_append
 
 HOME = os.path.expanduser("~")
@@ -35,6 +44,14 @@ SWEEPS = os.path.join(H, "sweeps")
 QUEUE = os.path.join(K, "triage", "queue.jsonl")
 BUS = os.path.join(K, "dreams", "bus", "workato-health.jsonl")
 MC_EVENTS = os.path.join(K, "mission-control", "events.jsonl")
+# test-noise window flags: consumer-side stand-in for the 'test_noise_window'
+# column on EM | Monitor Scope (158779) — accepted proposal
+# 2026-10-12-typed-sweep-findings (reduced, dissenter-survived form). The
+# column cannot be added to the live table programmatically (data_table_update
+# columns= replaces the full schema and nulls every cell — playbook
+# non-negotiable #1), so until it exists this file is authoritative.
+SCOPE_FLAGS = os.path.join(K, "workato-health-scope-flags.json")
+DIGEST_DIR = os.path.join(H, "digest")
 CAP = 50
 PROFILE = {"dev": "josh-us", "prod": "josh-prod"}
 
@@ -85,6 +102,116 @@ def wt_failed_jobs(rid, server, timeout=25):
         return []
 
 
+def wt_recent_jobs(rid, server, timeout=25):
+    """Newest page of jobs (ANY status) for a recipe (empty on any error).
+
+    The live-job source of truth for stall/new-failure verdicts (finding
+    workato-health-last-run-at-false-stall): `wt recipes get` fields
+    (last_run_at, job_failed_count) can lag 48-128h behind reality, while
+    `wt jobs list` reflects the newest tick immediately.
+    """
+    cmd = [WT, "jobs", "list", str(rid), "--raw",
+           "--profile", PROFILE.get(server, "josh-us")]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        if r.returncode != 0 or not r.stdout.strip().startswith("{"):
+            return []
+        data = json.loads(r.stdout)
+        return (data.get("items") or []) if isinstance(data, dict) else []
+    except (subprocess.TimeoutExpired, ValueError):
+        return []
+
+
+def newest_job_id(jobs):
+    """First job's ID from a jobs-list page (newest first), '' if none."""
+    for j in jobs:
+        if isinstance(j, dict) and j.get("id"):
+            return str(j["id"])
+    return ""
+
+
+def _job_epoch(ts):
+    """Epoch seconds for a job/cutoff timestamp, or None if unparseable.
+
+    Handles the two live shapes: sweep cutoffs ('...Z', UTC) and job_list
+    started_at ('...-07', Workato PT). Timezone-aware on purpose — a
+    string compare of '2026-10-23T02:00Z' vs '2026-10-22T20:00-07' (the
+    same instant) would misread a real failure as old by 7h.
+    """
+    s = str(ts or "").strip()
+    if not s:
+        return None
+    fmts = ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z")
+    s = re.sub(r"([+-]\d{2})$", r"\g<1>:00", s)  # '-07' -> '-07:00' (strptime %z needs minutes)
+    s = re.sub(r"Z$", "+00:00", s)
+    for fmt in fmts:
+        try:
+            t = dt.datetime.strptime(s, fmt)
+            return t.timestamp()
+        except ValueError:
+            continue
+    try:  # fallback: naive prefix, treated as UTC (sweep-cutoff shape)
+        return dt.datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S").replace(
+            tzinfo=dt.timezone.utc).timestamp()
+    except ValueError:
+        return None
+
+
+def classify_failure_delta(rid, server, cutoff_iso):
+    """Stale-index-guarded new-failures verdict (2026-10-23, finding
+    workato-health-last-run-at-false-stall).
+
+    A `fails > prev` delta from `wt recipes get` job_failed_count is only a
+    TRIGGER: that count (and last_run_at) can lag 48-128h — proven on dev
+    82862205, flagged new-failures with fails 77->78 / last_run=10-16 while
+    the live job_list showed green jobs every 15min (newest succeeded job
+    j-Ac6XKKsg-3REMRc-CD, 20:39 PT 10-22). The verdict now cites the live
+    job_list: a real failure must show a FAILED (non-probe, non-test-case)
+    job STARTED after the previous sweep (cutoff); otherwise the delta is
+    stale-index catch-up and the verdict is ok, citing the newest live job
+    ID as evidence. last_run_at stays sweep-output reference only, never a
+    verdict input. Fail-open: if the live jobs page is empty/unreadable the
+    conservative legacy verdict stands (a real failure is never muted by a
+    fetch hiccup).
+
+    Returns (verdict, detail_suffix, real_failed_jobs, probes_excluded).
+    """
+    fj = wt_failed_jobs(rid, server)
+    probes = sum(1 for j in fj if is_probe_job(j))
+    cases = sum(1 for j in fj if is_test_case_job(j))
+    real = [j for j in fj if not (is_probe_job(j) or is_test_case_job(j))]
+    suffix = ""
+    if probes:
+        suffix += f" ({probes} probe jobs excluded)"
+    if cases:
+        suffix += f" ({cases} test-case jobs excluded)"
+    if fj and not real:
+        return "ok", suffix, real, probes  # probe / red-test-case noise only
+    live = wt_recent_jobs(rid, server)
+    newest_live = newest_job_id(live)
+    cutoff_epoch = _job_epoch(cutoff_iso)
+    if cutoff_epoch is None:  # unparseable cutoff: fail-open, never mute
+        return "new-failures", suffix, real, probes
+    recent = [j for j in real
+              if _job_epoch(j.get("started_at")) is None  # unparseable = recent (never mute)
+              or _job_epoch(j.get("started_at")) > cutoff_epoch]
+    if real and not recent:
+        newest = live[0] if live else {}
+        return ("ok",
+                f" (stale-index: fails delta confirmed stale — no failed job "
+                f"newer than {cutoff_iso}; newest live job {newest_job_id(live) or 'none'} "
+                f"status={newest.get('status', 'unknown')} started_at={str(newest.get('started_at', ''))[:19]})"
+                + suffix, real, probes)
+    if recent:
+        top = recent[0]
+        return ("new-failures",
+                f" (newest failed job {top.get('id', '?')} started_at="
+                f"{str(top.get('started_at', ''))[:19]} — live job_list cited)"
+                + suffix, real, probes)
+    # no live jobs page available: fail-open to the legacy trigger verdict
+    return "new-failures", suffix, real, probes
+
+
 def is_probe_job(job):
     """True for mcp_mock registry health-probe jobs (noise by design)."""
     return "mcp_mock" in json.dumps(job).lower()
@@ -117,6 +244,41 @@ def load_state():
         return json.load(open(STATE))
     except Exception:
         return {"failed_counts": {}}
+
+
+def load_scope_flags(today=None):
+    """Test-noise window flags -> {recipe_id: flag} for UNEXPIRED flags only.
+
+    A flag with no parseable 'until' date, or whose 'until' has passed, is
+    IGNORED — a dev window can never silently become a permanent mute
+    (digest-downgrade, not suppression; the dissenter-survived form).
+    """
+    today = today or dt.date.today()
+    try:
+        with open(SCOPE_FLAGS) as fh:
+            raw = json.load(fh).get("flags", {})
+    except Exception:
+        return {}
+    out = {}
+    for rid, flag in raw.items():
+        try:
+            until = dt.date.fromisoformat(str(flag.get("until", "")))
+        except ValueError:
+            continue
+        if until >= today:
+            out[str(rid)] = flag
+    return out
+
+
+def digest_append(row):
+    """Append a digest-only failure row to the per-day digest accumulator
+    (workato-health/digest/<YYYY-MM-DD>.jsonl) — the daily-digest route for
+    flagged recipes, rendered nightly by harness-health. Replaces the
+    realtime surfaces (triage queue + recipe-health bus finding) for these
+    rows; the sweep ledger row is still written either way."""
+    day = str(row.get("ts", ""))[:10] or "undated"
+    os.makedirs(DIGEST_DIR, exist_ok=True)
+    atomic_append(os.path.join(DIGEST_DIR, f"{day}.jsonl"), row)
 
 
 def queue_load():
@@ -230,11 +392,19 @@ def bus_post(e):
 
 
 def main():
+    import argparse
+    # --help/-h gate (2026-10-16): bare main() wrote summary JSON, a heartbeat
+    # row and the fleet log on EVERY invocation, including a naive --help.
+    ap = argparse.ArgumentParser(
+        description="workato-health sweep (flags --dry-run/--json still read "
+                    "from argv; run bare for the real sweep)")
+    ap.parse_args()
     dry = "--dry-run" in sys.argv
     as_json = "--json" in sys.argv
     reg = load_registry()
     state = load_state()
     prev_fails = state.get("failed_counts", {})
+    scope_flags = load_scope_flags()
     selected = select_assets(reg)
     now = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     rows, failures = [], []
@@ -265,25 +435,24 @@ def main():
             elif not running and stop_cause:
                 verdict = "stopped"
             elif fails > prev:
-                fj = wt_failed_jobs(rid, server)
-                probes = sum(1 for j in fj if is_probe_job(j))
-                cases = sum(1 for j in fj if is_test_case_job(j))
-                probe_excluded += probes
-                real = [j for j in fj if not (is_probe_job(j) or is_test_case_job(j))]
-                if fj and not real:
-                    verdict = "ok"  # probe / red-test-case noise only
-                else:
-                    verdict = "new-failures"
-                if probes:
-                    detail += f" ({probes} probe jobs excluded)"
-                if cases:
-                    detail += f" ({cases} test-case jobs excluded)"
+                # 2026-10-23: verdict now confirmed against live job_list
+                # (classify_failure_delta) — the raw fails delta is only a
+                # trigger; last_run_at (48-128h stale) is reference-only.
+                cutoff_iso = state.get("last_sweep_ts") or \
+                    dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+                verdict, extra, _real, _nprobes = classify_failure_delta(rid, server, cutoff_iso)
+                detail += extra
             elif not running:
                 verdict = "not-running"
             else:
                 verdict = "ok"
         row = {"ts": now, "id": rid, "server": server, "verdict": verdict,
                "name": name, "flags": e["flags"], "detail": detail}
+        if verdict == "new-failures" and rid in scope_flags:
+            # test-noise window: failure findings route to the daily digest,
+            # not the realtime page (triage queue + recipe-health bus)
+            row["digest_only"] = True
+            row["flag_reason"] = str(scope_flags[rid].get("reason", ""))[:120]
         rows.append(row)
         if verdict in ("stopped", "new-failures"):
             failures.append(row)
@@ -303,7 +472,12 @@ def main():
                     prev_fails[r["id"]] = int(m[1].split(" ")[0])
                 except (ValueError, IndexError):
                     pass
-        json.dump({"updated": now, "failed_counts": prev_fails}, open(STATE, "w"), indent=1)
+        # full-state write (2026-10-23): keeps escalated_ts alongside
+        # failed_counts and records last_sweep_ts — the cutoff the next
+        # sweep's stale-index guard compares live failed jobs against
+        state["updated"] = now
+        state["last_sweep_ts"] = now
+        json.dump(state, open(STATE, "w"), indent=1)
 
     # failures -> triage queue + bus, with mute-on-ownership + escalation
     # (2026-10-14, graduated from incubating proposal sweep-finding-mute-on-
@@ -311,8 +485,19 @@ def main():
     # escalation of stale pending decisions, so muting can never automate
     # the skimming it fears)
     qrows = queue_load()
-    muted, escalated = [], []
+    muted, escalated, digest_routed = [], [], []
     for f in failures:
+        if f.get("digest_only"):
+            # flagged (test-noise window): digest route only — no triage row,
+            # no realtime bus finding; the digest accumulator is rendered
+            # nightly by harness-health (digest-downgrade, not suppression)
+            digest_append({"ts": now, "id": f["id"], "server": f["server"],
+                           "verdict": f["verdict"], "name": f["name"],
+                           "detail": f["detail"],
+                           "flag_reason": f.get("flag_reason", ""),
+                           "source": "workato-health"})
+            digest_routed.append(f["id"])
+            continue
         owner, age_h = ownership(f["id"], qrows)
         if owner == "triage-owned":
             muted.append(f["id"])
@@ -343,7 +528,8 @@ def main():
                        "evidence": f"wt recipes get {f['id']} --profile {PROFILE.get(f['server'])}: {f['detail'][:120]}",
                        "work": "autopsy + fix-forward (dev-scoped unless prod hotfix, which needs Josh)",
                        "points": 3, "status": "open"})
-    live = [f for f in failures if f["id"] not in muted]
+    live = [f for f in failures
+            if not f.get("digest_only") and f["id"] not in muted]
     if live:
         bus_post({"ts": now, "agent": "workato-health", "kind": "finding",
                   "thread_id": "recipe-health",
@@ -359,13 +545,15 @@ def main():
     summary = {"ts": now, "selected": len(rows),
                "verdicts": {v: sum(1 for r in rows if r["verdict"] == v) for v in
                             ("ok", "stopped", "new-failures", "not-running", "unverifiable")},
+               "digest_only": len(digest_routed),
                "failures": failures}
     json.dump(summary, open(LATEST, "w"), indent=1)
     # heartbeat check-in so the dashboard timer chip sees liveness
     atomic_append(os.path.join(K, "garden-reports", "heartbeat.jsonl"),
                   {"ts": now, "job": "workato-health"})
     line = (f"sweep done: {summary['selected']} assets -> {summary['verdicts']} "
-            f"| {len(failures)} failures -> triage queue + bus")
+            f"| {len(failures) - len(digest_routed)} failures -> triage queue + bus"
+            f"{f' | {len(digest_routed)} test-noise -> daily digest' if digest_routed else ''}")
     if probe_excluded:
         line += f" ({probe_excluded} probe jobs excluded)"
     try:  # write our own fleet log line; launchd stdout capture is unreliable

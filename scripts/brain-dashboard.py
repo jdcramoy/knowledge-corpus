@@ -97,8 +97,8 @@ JOB_ALIAS = {
     "dreamer": "harness-dreamer", "jira-triage": "jira-triage",
     "corpus": "corpus", "architect": "estate-architect",
     "health": "workato-health", "gym": "gym",
-    "dream-mini": "harness-dreamer-mini", "brain-dashboard": None,
-    "agent-command-watcher": None,
+    "dream-mini": "harness-dreamer-mini", "brain-dashboard": "brain-dashboard",
+    "agent-command-watcher": None,  # event-driven: no heartbeat, state file is the evidence
 }
 
 
@@ -121,8 +121,10 @@ def _expected_window(sched):
 
 
 def timers():
-    """Every com.josh launchd timer: schedule, evidence (heartbeat > log mtime
-    > state file), and a state that means what it says:
+    """Every com.josh launchd timer: schedule, evidence (FRESHEST of heartbeat /
+    log mtime / state file wins — a fixed heartbeat>log priority misreported the
+    2026-10-15 heartbeat wipe as 19 late/missed timers whose job logs said "done
+    validated"), and a state that means what it says:
     ok = ran within window · late = overdue <3x · overdue = missed · new = never fired."""
     import re as _re2
     heart = {}
@@ -146,8 +148,10 @@ def timers():
                     return int(mm.group(1)) if mm else None
                 h, mi, wd = kv("Hour"), kv("Minute"), kv("Weekday")
                 if h is not None:
+                    # wd=0 is Sunday — `wd or ""` turned it falsy and weekly
+                    # Sunday jobs got a 26h window (false "overdue" forever)
                     day = {"1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu",
-                           "5": "Fri", "6": "Sat", "0": "Sun"}.get(str(wd or ""), "")
+                           "5": "Fri", "6": "Sat", "0": "Sun"}.get(str(wd), "") if wd is not None else ""
                     sched = f"{day + ' ' if day else ''}{h:02d}:{mi or 0:02d}"
                 elif mi is not None:
                     sched = f"hourly :{mi:02d}"
@@ -194,22 +198,42 @@ def timers():
                 newest = max((l for l in cand_logs if os.path.exists(l)), key=os.path.getmtime)
                 log = newest
                 hb_ts = dt.datetime.fromtimestamp(os.path.getmtime(newest)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        # state semantics: evidence age vs expected window
-        if hb_ts is None:
+        # state semantics: freshest evidence wins (heartbeat, log mtime, state
+        # file all compete). heartbeat.jsonl lost rows to a wholesale rewrite
+        # on 2026-10-15 — a stale heartbeat must never outrank a fresh log
+        # that says "done validated". Source tag in the detail makes the next
+        # wipe diagnosable from the chip.
+        cands = []
+        if hb_ts:
+            cands.append((ts_epoch(hb_ts), "hb", hb_ts))
+        for l in cand_logs:
+            if l and os.path.exists(l):
+                cands.append((os.path.getmtime(l), "log", l))
+        if name == "agent-command-watcher":
+            sf = os.path.join(K, "garden-reports", "command-watcher-state.json")
+            if os.path.exists(sf):
+                cands.append((os.path.getmtime(sf), "state", sf))
+        if cands:
+            ev_epoch, ev_src, ev_ref = max(cands, key=lambda c: c[0])
+            ev_ts = ev_ref if ev_src == "hb" else dt.datetime.fromtimestamp(ev_epoch).strftime("%Y-%m-%dT%H:%M:%SZ")
+        else:
+            ev_epoch, ev_src, ev_ts = None, None, None
+        if ev_ts is None:
             state, detail = "new", "pending first run"
         elif name == "agent-command-watcher":
             # event-driven, quiet by design: writes state only when it sees commands
-            state, detail = "ok", f"event-driven · wrote {rel_or_dash(hb_ts)}"
+            state, detail = "ok", f"event-driven · wrote {rel_or_dash(ev_ts)}"
         else:
-            age = time.time() - ts_epoch(hb_ts)
+            age = time.time() - ev_epoch
             win = _expected_window(sched)
+            tag = {"hb": "", "log": " (log)", "state": " (state)"}[ev_src]
             if age < win:
                 state = "ok"
-                detail = rel_or_dash(hb_ts)
+                detail = rel_or_dash(ev_ts) + tag
             elif age < win * 3:
-                state, detail = "late", f"{rel_or_dash(hb_ts)} — overdue"
+                state, detail = "late", f"{rel_or_dash(ev_ts)} — overdue{tag}"
             else:
-                state, detail = "overdue", f"{rel_or_dash(hb_ts)} — missed"
+                state, detail = "overdue", f"{rel_or_dash(ev_ts)} — missed{tag}"
         last_log = ""
         try:
             lines = open(log, errors="replace").readlines() if os.path.exists(log) else []
@@ -286,6 +310,42 @@ def bus_summary():
         if not t["line"] and e.get("kind") == "finding":
             t["line"], t["kind"] = e.get("line", ""), e.get("kind", "")
     return events, threads
+
+
+def topics_rows():
+    """Top agent chat topics — same ranking as the brain MCP's brain_topics tool."""
+    since_ok = time.time() - 86400
+    threads = {}
+    for f in glob.glob(os.path.join(K, "dreams", "bus", "*.jsonl")):
+        agent = os.path.basename(f)[:-6]
+        for e in read_jsonl(f):
+            ep = ts_epoch(e.get("ts", ""))
+            if ep < since_ok:
+                continue
+            tid = e.get("thread_id") or e.get("thread") or e.get("subject") or e.get("key") or ""
+            if not tid:
+                continue
+            t = threads.setdefault(tid, {"agents": set(), "posts": 0, "last": 0, "body": ""})
+            t["agents"].add(agent)
+            t["posts"] += 1
+            t["last"] = max(t["last"], ep)
+            body = e.get("body") or e.get("message") or e.get("text") or e.get("line") or ""
+            if isinstance(body, str) and len(body) > len(t["body"]) and len(body) > 60:
+                t["body"] = body
+    ranked = []
+    for name, t in threads.items():
+        age_h = max(0.0, (time.time() - t["last"]) / 3600.0)
+        score = t["posts"] + 3 * len(t["agents"]) + max(0.0, 6.0 * (1.0 - age_h / 168.0))
+        ranked.append((score, name, t))
+    ranked.sort(reverse=True)
+    rows = []
+    for score, name, t in ranked[:10]:
+        last_h = (time.time() - t["last"]) / 3600.0
+        rows.append(
+            f"<tr><td><b>{esc(name)}</b></td><td>{t['posts']}</td>"
+            f"<td>{len(t['agents'])}</td><td>{last_h:.0f}h ago</td>"
+            f"<td>{esc(t['body'][:200])}</td></tr>")
+    return "".join(rows) or '<tr><td colspan="5">(no threads)</td></tr>'
 
 
 def autonomous_work():
@@ -543,6 +603,7 @@ def xrow(cells, detail_html):
 def render():
     tmrs = timers()
     events, threads = bus_summary()
+    topics_html = topics_rows()
     work = autonomous_work()
     claims = claims_rows()
     caps = capabilities_rows()
@@ -786,6 +847,9 @@ def render():
   </div>
 </div>
 
+<h2 id="topics">Top agent chat topics — 24h (what the fleet is talking about)</h2>
+<div class="card"><table><tr><th>topic</th><th>posts</th><th>agents</th><th>last</th><th>latest word</th></tr>{topics_html}</table></div>
+
 <div class="grid2">
   <div>
     <h2 id="claims">Claim ledger — active</h2>
@@ -888,11 +952,28 @@ def attention_queue():
 
 
 def main():
+    import argparse
+    # --help/-h gate (2026-10-16): bare main() rendered the dashboard HTML and
+    # wrote a heartbeat row even on a naive --help.
+    ap = argparse.ArgumentParser(
+        description="brain dashboard renderer (bare run = render + write)")
+    ap.parse_args()
     os.makedirs(K, exist_ok=True)
     html_out = render()
     with open(OUT, "w") as fh:
         fh.write(html_out)
     print(OUT)
+    # mechanical heartbeat (atomic_io, locked): this job runs raw python3, not
+    # run-job.sh, and prints nothing on success — log mtime went 8d stale and
+    # the dashboard showed a healthy hourly timer as "missed" (found 10-16).
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from atomic_io import atomic_append
+        atomic_append(os.path.join(K, "garden-reports", "heartbeat.jsonl"),
+                      {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                       "job": "brain-dashboard"})
+    except Exception as exc:  # heartbeat must never fail the dashboard write
+        print(f"heartbeat append failed: {exc}", file=sys.stderr)
     if "--open" in sys.argv:
         subprocess.run(["open", OUT])
 

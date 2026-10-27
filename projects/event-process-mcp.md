@@ -216,3 +216,32 @@ pending-features/. Risk (5) CLOSED.
   regression case not authored (test-case API 422s); cursor/has_more nil
   under test sandbox — confirm on a real MCP call; prod promotion of the
   fix NOT started (dev-only so far).
+
+## 2026-10-19 BTSUP-79202: "Campaign Copilot MCP shows no tools" — server side verified healthy
+
+Ticket filed 18:54Z by Perri Bronson (MOPs), Marc Parilla pinged Josh 19:02Z.
+No description, no client info.
+
+Live evidence (wt --profile josh-prod, 2026-10-19 ~20:00Z):
+- MCP server `Campaign Copilot by Workato MCP` (mcps-AbR6YwoM-JX8-CD): published=true,
+  tools_count=7 (all tool rows present), mcp_url https://18680.apim.mcp.workato.com,
+  auth=workato_idp scoped to ONE idp_user_group (hYq3WdMefHkN2eest6Beq3),
+  has_vua_dependent_tools=false, config unchanged since 2026-09-12.
+- ALL MCP skill recipes running (82043947-82043953), all automation/functions/ops
+  recipes running. The Oct-09 Marketo-quota stop of 82043948 was resolved earlier.
+- Gateway live: /.well-known/oauth-protected-resource returns valid metadata.
+- NOT verified: an end-to-end tools/list over a live OAuth session — the id.workato.com
+  authorize flow bounces to Okta sign-in (Workato GO | Home Agentic SSO) needing Josh.
+- NOT knowable from here: which client/user the reporter means, IDP group membership.
+
+Working theory (labeled as such): consumer-side stale sign-in or group membership;
+some clients show "connected, empty tools" on failed entitlement. Reply posted asks
+for client + user + reconnect behavior. If recurrence: the OAuth end-to-end check
+(OAuth dance per wt-cookbook) is the next decisive probe, needs Josh's browser.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Event Process MCP / Event360](projects/event-process-mcp.md) — Event360/Campaign Copilot MCP app (BSYS-28196); ops-monitoring parity-window with [[estate-monitor]]; canonical repo ~/orca/projects/event-process-mcp/ (absorbed 2026-10-06, committed evidence bundle); master handoff docs/EVENT_PROCESS_MCP_ORCA_HANDOFF.md; project skills event360-ops + event360-live-refresh; open risks: calendar replay/claim ordering, env stamps in Prod signals (detector half FIXED 2026-10-09 via literal correction — property-driven claim needs live verify), -07:00 DST bug; **addCalendarEvent toggle DEPLOYED TO PROD 2026-10-07 (BSYS-29325, 5th attempt — in-place import verified); email-typeahead parked**; **2026-10-09 round (mined 2026-10-10): Prod 82043948 v7 + Dev 73594487 STOPPED pending Marketo reauth (quota-killed conns 19943717/19655486 — connection-lost blocks recipe start, NO bypass; LIVE-CHECK restart status); error-text propagation pattern (error_category=connector:action—message, 500-char cap) + env-coded 🔵/🔴 Slack labels + router-drain-on-restart deployed; new IDs: prod router 82043946 v5, prod detector 82043940 v3; scheduler min interval 5 min; Marketo quota signature `Daily quota '100000' reached` kills OAuth validation too**

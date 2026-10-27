@@ -28,9 +28,15 @@ safe. Claim clm-012.
   `--thread slug`, `--agent name`, `--json`): merges, sorts, tallies
   corroborations per thread, applies TTL.
 - Protocol: `knowledge/dreams/GOSSIP.md`. Every agent: READ bus at start
-  (corroborate existing threads, never duplicate), POST max 3 findings at end
-  (with refs), `kind:"handoff"` to route work to another agent.
-- Corroboration = confidence: 1 witness = observation, 2 = pattern, 3+ = act.
+  (never duplicate a thread; corroborate only with independent evidence —
+  best-effort), POST max 3 findings at end (with refs), `kind:"handoff"` to
+  route work to another agent.
+- Corroboration = best-effort signal, NOT the promise (re-scoped 2026-10-26,
+  Josh ruling on the agent-gossip-bus row): the bus's contract is
+  broadcast + aggregate — the tally (1 witness = observation, 2 = pattern,
+  3+ = act) is only the actuator's mechanical threshold in
+  gossip-actuate.py, never an expectation that agents reply. Enforcement in
+  prompts revisited only if deliberation quality becomes a bottleneck.
 - Wired: watchdog, gardener, architect, promotion-orchestrator (brief
   sections), dreamer (reader-in-chief step, runs last 23:43 and synthesizes
   the night), docs-watch.py (auto-posts platform deltas, first poster 22:15).
@@ -364,6 +370,25 @@ missing from the kit entirely):
   warning). Proven by env -i repro (stub before, validated after the
   fix). The runner now repairs PATH + sources ANTHROPIC_/WORKATO_/
   FIREWORKS_ exports from ~/.zshenv itself.
+- SECOND root cause, DIFFERENT class (2026-10-16→17 night chain, planted
+  2026-10-19 from gardener report L1): the 2026-10-16 16:45 fleet sync
+  deployed PRE-COMMIT-REDACTED jobfiles (placeholder `/Users/YOUR-USER`
+  paths instead of real homes), so every script job's final atomic_io
+  heartbeat write exited 2 while the jobs themselves ran fine. Rule:
+  sync pipelines must never ship redacted-path jobfiles; a deploy
+  artifact is either real-path or it is not deployed. (Zero grep hits
+  for "YOUR-USER" in knowledge/*.md before this planting; sources:
+  gardener report garden-reports/garden-2026-10-17-late.md L1, cited
+  transcript `~/.claude/projects/-Users-<user>-Documents-workbench/
+  3df5be5d-65fd-4735-871d-0d16dd1a578e.jsonl`.)
+- FALSE-STUB class, runner-side (same 2026-10-17 night chain): a job
+  script that logs everything to its OWN file leaves the runner's
+  stdout capture empty → the validator's empty-output rule reads it as
+  a stub EVERY night (wave3-nightly hit it; fix = stdout summary line
+  plus the mechanical heartbeat, deployed to 3 fleet script sites,
+  verified live 2026-10-17: heartbeat landed, no new failure row).
+  Rule: stdout-empty does NOT mean stub when the script self-logs;
+  the validator contract is evidence-of-run, not evidence-in-stdout.
 - VALIDATION: an attempt counts only with evidence — fresh heartbeat for
   the job OR non-empty output file. Silent rc=0 = STUB. Stub → immediate
   retry → double stub → garden-reports/fleet-validation.jsonl (confirmed
@@ -588,3 +613,41 @@ probe the REAL path (os.path.realpath), which is why the probe compares realpath
 **Dead-man page path ARMED (2026-10-12 00:22):** admin approval landed → "Add New Webhook" flow via app-settings was broken (malformed /oauth/<id> route from Slack's own page, "Invalid client_id"). Completed the OAuth flow MANUALLY instead: added redirect_urls + incoming-webhook bot scope + bot_user to the manifest (the schema error that caused every silent strip: "Oauth requires bot_user" — any bot scope needs features.bot_user), ran slack.com/oauth/v2/authorize with explicit scope=incoming-webhook + redirect to api.slack.com, grabbed the ?code= from the network log (api.slack.com bounces to docs.slack.dev and loses it in the address bar), exchanged via oauth.v2.access with client_id+secret. Webhook: DM to @josh.cramoy (channel D0A40K944M7), scope EXACTLY incoming-webhook. Secret set, curl test-fire returned ok. Watch cron deleted. KEYS TO THE WHOLE MAZE: (1) bot scopes require features.bot_user; (2) pass scope explicitly on authorize URLs; (3) the code lands in the network capture, not the address bar.
 
 **P2 CLOSER shipped (2026-10-13 18:00):** session-shadow.py now closes the detection→recovery gap on the 8985 lesson. (1) AUTO-ABSORB: when deadman_sweep records a dropped session it also appends an `absorb-note` row to mission-control events.jsonl (recovery payload: turn count, last 3 prompts, files touched, last assistant output, transcript path; workstream `dropped-<sid12>`; idempotent per session — live-proven: 63 backlog rows on first post-deploy cycle, zero dups, stable across cycles; keys exactly mirror the 12-key closeout schema). (2) CHECKPOINT JOURNAL: `mission-control/checkpoints.jsonl` gets one sparse row per session per 50-turn bucket (≥50 turns), mtime-gated so unchanged transcripts are never rescanned; second cycle runs 1.9s vs 10s bootstrap. Ledger paths env-overridable (`SESSION_SHADOW_{MC_EVENTS,DROPS_PATH,CHECKPOINTS_PATH}`); `--selftest` runs 13 checks against a /tmp fixture with temp ledgers (SELFTEST: PASS). Kill-test NOT yet done — next dropped session is the live proof. **Trap found during deploy: the launchd job (com.josh.session-shadow) is DOWN — its plist pins `/opt/homebrew/bin/python3`, which no longer exists (homebrew now ships only python3.11/3.12/3.14), last exit 78, log /tmp/session-shadow.log empty since Oct 9, shadow state frozen Oct 12 19:27. The 60s tailer only runs when launched manually until the plist interpreter path is fixed (Josh/parent lane — plist outside builder contract).**
+
+**Fleet-runtime triage bundle (2026-10-16, six-bug dev fix):** (1) wave3-nightly rc=127 root cause = jobs/wave3-nightly.script MISSING on Oct 12 (deploy gap; since restored, all 3 fleet copies diff-identical) — residual fix: run_job() script branch used `>>` into the OUT capture, so stale failure lines persisted FOREVER, re-polluted every nightly log, and made `[ -s "$OUT" ]` permanently true = validated() always-pass; now `>` (truncate per attempt). (2) run-job.sh attempt() rc misclassification: rc≠0 + non-empty OUT now returns "ran rc=N" (real failing job), "stub rc=N" reserved for empty-output failures; ledger note made result-neutral. (3) PRELAUNCH DEATH GUARD: missing jobs/<name>.env now appends {"result":"prelaunch-death:missing-env"} to fleet-validation.jsonl + exits 1 BEFORE the lock (was: silent `source` death, job invisible to watchdog). Deploy log convention: ~/.local/state/fleet/deploys.log (one line per bundle). (4) --HELP SIDE-EFFECT CLASS (7 scripts, not 4): command-canary, turn-audit (module-level exec, no main guard), workato-health, instruction-miner, brain-dashboard, decision-inbox, harness-health ALL ran their real job + wrote heartbeat/ledger/bus rows on a naive --help (no argparse, or module-level main); fixed with argparse-at-main() gates / early --help exit — verified hb/trend/canary-status/dashboard unchanged across --help runs; ops-server.py was already safe (argv dispatch, exit 2). Adjacent, NOT fixed (report-file writers only, no ledger rows): restore-drill, regression-nightly, gym (writes on FAIL), room-sweep (crashes on --help, no side effect). (5) gossip-read.py _ts() TZ BUG: stripped Z then mktime-assumed-LOCAL = every Z row +14400s off in TTL/--since windows; now calendar.timegm for Z, tz-aware for ±hh:mm offsets, epoch-string passthrough; ts_sort_key upgraded from shape-GROUPING (no crash but floats always before strings regardless of real time) to true epoch interleave via _ts; regression-tested (mixed float/Z/offset fixture orders 13:20Z < 17:30Z < 18:00Z; real bus 1515 events sorted=True, 1198 Z-rows). (6) LaunchAgent python3 unlink class (exit 78): agent-command-watcher plist ALREADY repointed to /opt/homebrew/bin/python3.14 (verified: exists, 3.14.8, loads clean, selfcheck ok in /tmp log); session-shadow plist since repointed to /usr/bin/python3, exit 0. LESSON: homebrew versioned-python symlinks (python3) unpin silently on upgrade — pin plists to the VERSIONED binary (python3.14) or /usr/bin/python3.
+
+**Nightly receipts gate BUILT (2026-10-19, proposal 2026-10-16-nightly-sync-receipts as amended):** `scripts/nightly-receipts-gate.py` — morning gate over all 8 nightly jobs' OUTPUT artifacts (NOT self-reported receipts — Josh-accepted dissent held: receipts can crash-after-work false-alarm or zombie-ok false-pass; the escalation keys on artifact presence + freshness only; the receipts ledger garden-reports/nightly-receipts.jsonl is auxiliary). Schedule verified from plists 2026-10-19: docs-watch 22:31 (NOT 22:15), gardener 22:43, watchdog 23:13, backup 23:33, kb-sync 21:37, dreamer 23:43 (NOT 03:47), kb-digest 22:07, registry-backup 04:23 — all DAILY, no Weekday keys in the set. Ground truth per job: platform-delta.jsonl mtime / garden-reports/<date>-brain-gardener-nightly.md / watchdog-reports/<date>.md / newest josh-orca commit / ~/.claude/workato-kb/diffs/<date>.json exists+PARSES / dreams/<date>.md (the report-existence tripwire folded in, not duplicated) / digest.log last "date" marker / registry snapshot exported_at. run-date = today if now past fire time else yesterday (morning gate sees 23:xx jobs as yesterday's). Stale → bus row via bus_post.py (type finding — bus_post has no 'escalation' type, semantics in claim; subject nightly-receipts-gate) + state-file dedupe per run-date; `--json`, `--no-bus`, `--verify-config` modes; exit 1 on any stale. NOT in launchd (Josh schedules). First live run 2026-10-19 22:55: 6/8 fresh, 2 REAL stale — kb-sync diffs/2026-10-19.json missing (nightly diff report absent since 2026-10-14, sync.log still writing = crash-after-work class) and registry-backup snapshot frozen at exported_at 2026-10-18T08:23Z (that morning's 04:23 run produced nothing; /tmp/gws-registry-backup.log empty). Both escalations posted to the bus.
+
+**Mission-control TTL + deadman close-on-drop BUILT (2026-10-20, proposal 2026-10-15-mc-defer-expiry-ttl):** `mission-control.py` gained `add --ttl-hours N` and an `expired` subcommand; `fold_all()` splits the projection into active rows plus an expired digest (registry.json `expired` key, board.html digest section, one line each). Class defaults when the flag is omitted: needs-josh rows get NO clock (a Josh decision never auto-expires; an explicit ttl on the needs-josh event DOES expire it with the `--needs` sentence carried into the digest, proposal item 3), in-flight rows default to 24h, deadman `dropped-*` rows close on drop by name (projected done, `closed_on_drop: true`, leave the digest after 14d). TTL is state-scoped: effective clock = last ttl_hours recorded on an event of the SAME state, so an in-flight claim clock cannot silently expire a later needs-josh flip, and any fresh event re-raises an expired row (expiry is projection-only, the event log is never mutated, nothing auto-CLOSEs, item 4). `--ttl-hours 0` = explicit never-expires. Backward compat verified live: existing rows without the field behave exactly as before (the only change is deadman demotion); the CLAUDE.md closeout invocation is untouched. Real-board before/after (events identical): stale>24h 280 -> 79, active rows 438 -> 232 + 208 in the digest, needs-josh 87 -> 87 (no existing row carries a TTL by design; the needs-josh cohort drains by owner closure or explicit TTLs, per the 2026-10-18 reshaped core). Live evidence the change is safe under concurrency: a cortex pulse refolded the real board with the new code seconds after the edit (registry valid, board renders). Rollback: mission-control.py.bak-ttl-20261019.
+
+## Triage pass 2026-10-22 — harness lessons (64-finding sweep)
+
+- The 10-19 cron wipe was a HARNESS resume-clobber, not the librarian (attribution doc):
+  `--resume` re-persists the resumed session's own scheduled-task state over the project
+  file. 8 durable tasks were re-armed 10-20 07:10. Rule stands: CronCreate/CronDelete only,
+  never direct-write scheduled_tasks.json.
+- Nightly receipts had THREE stacked causes: placeholder-corrupted jobfiles (cwd-fail),
+  TCC denial on ~/Documents for python3-rooted launchd (fix: /bin/bash wrapper root),
+  and a gate pattern that missed filename variants. Fix all three; liveness alarm added
+  (com.josh.fleet.watchdog-liveness, 03:43 daily).
+- KB sync now has single-flight flock + 8GB memory cap (35GB runaway can't recur); digest
+  falls back to last-good diff with STALE-since marker; quiet-night floor counts workato-owned
+  sources only. The "464 stuck docs" were 467 zero-chunk docs — excluded from hubs, loop converged.
+- GFM vs Jira wiki: the integrations.ai Jira connection renders WIKI markup, not GFM —
+  `**bold**` posts literally. Both EM assemblers (handler 82971161 step 48, 82997363 step 12)
+  now convert GFM→wiki and a raw-dump guard posts a formatted fallback. House rule: convert
+  before posting through Workato Jira connections.
+- build-start-register.py hook registered (PreToolUse Write|Edit|Bash) — auto mission-control
+  claim row on first mutation; needs session restart to arm. Kills the 16-card
+  unregistered-session class.
+- Evidence gate normalization: triage queue evidence fields are prose; extract pointer tokens
+  (paths/URLs/bus:/job:) mechanically, then let evidence_ref_check.py decide. 7/64 were
+  UNVERIFIED (bare wt-metric claims, phantom bus threads) — those slugs need real pointers
+  at filing time.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Dream loop + harness backup](domains/dream-loop.md) — nightly dreamer (LAUNCHD fleet since 2026-10-07 — old self-rearming crons expired silently leaving the fleet dead; 8 plists com.josh.fleet.*, session-independent, logs in ~/.local/state/fleet; toolkit repo has the full kit): mines the transcript corpus for corrections/repeats/errors (pragmatic) + inventions (forward-thinking mandate, 2-3/night) → dream reports + proposals in knowledge/dreams/; trust ladder report→propose→auto-safe via dream-config.py with never_auto constitutional; harness backup 23:33 to github.com/Workato-All/josh-orca (secrets redacted, transcripts/keychain never copied); **+ /triage (2026-10-08): the silver platter for DISCOVERED work — watcher findings → knowledge/triage/queue.jsonl → interactive verdicts → BSYS Story/Bug under BSYS-21305 FY27 VMT; recorder triage-decide.py; skill /triage**; **+ /triage sync bridge (2026-10-23, Josh-approved): needs-josh-audit found 49 of 99 registry decision rows dead (resolved/moot by later work, incl. 19-manufactured fixloop cards the convergence counter regex-mined from its own output) — closed with evidence-cited superseding events (reports/needs-josh-audit-2026-10-23.md); triage-decide.py gained `sync` (mission-control needs-josh rows ingest as kind=decision cards, idempotent) + verdict WRITE-BACK (mc- reject/build/filed/accept auto-close the registry row via superseding event, defer/reopen behave; probe-verified E2E) so decisions live in ONE queue and the board can no longer rot silently**; **+ project-dreamer agent 00:37 (domains/project-dreamer.md), /proposals silver-platter approval skill, loadout job 07:45 — all LIVE 2026-10-07; proposal-decide.py is the ONE recorder (proposal-outcome.py legacy duplicate, retire)**; **+ decision inbox + harness auto-lane (2026-10-09): scripts/decision-inbox.py (ONE ranked budgeted surface, lanes by ORIGIN not keywords, now/decision-inbox.md, fleet 07:20, brief leads with it) + scripts/harness-health.py (watchdog for the harness: fleet liveness vs heartbeat, ledger freshness, dedup, defect probes; self-resolves transients; fleet 23:20) + harness-fix agent job (08:10, dev-only, works the auto lane — first run fixed 10 findings, correctly escalated fleet dual-copy drift: 21 plists → ~/.local/bin/fleet vs 5 → kit, jobs/ diverged both directions)**; **+ BUS ACTUATION LIVE (2026-10-14, Josh-approved): gossip-actuate.py + fleet job bus-actuate (hourly :41) — threshold-crossing fresh threads file triage cards + bus announcements (defect≥1 / general≥2 evidence-bearing corroborations, corrigendum→dissenter-first, idempotent ledger dreams/bus/actuations.jsonl); tally ORDER-DEPENDENCE bug fixed (witnesses sorting before finder were mis-filed self-verifies; defect threads could never corroborate; lifetime corroborations 10→16 corrected); first live actuation surfaced a 4-day-old unanswered Josh pause-decision (prod-82090477 quota burn)**; **+ fleet-runtime triage bundle (2026-10-16): run-job.sh OUT-truncate + ran/stub rc split + prelaunch-death guard + deploys.log, --help side-effect class gated in 7 knowledge scripts, gossip-read _ts tz-aware (+14400s Z-row bug) + ts_sort_key epoch interleave, python3-unlink plist class lesson (pin versioned binaries) — in file**

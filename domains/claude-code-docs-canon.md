@@ -159,3 +159,10 @@ security keys honor the stricter value from any scope.
 - [Tool search tool](../../kb-corpus/claude/docs_en_agents-and-tools_tool-use_tool-search-tool.md.md)
 - [Prompting Claude Fable 5](../../kb-corpus/claude/docs_en_build-with-claude_prompt-engineering_prompting-claude-fable-5.md.md)
 <!-- kb-bridges:end -->
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Claude Code docs canon](domains/claude-code-docs-canon.md) — OFFICIAL-docs best practices (fetched 2026-10-07): CLAUDE.md ≤200 lines + contradiction audit, auto-memory (MEMORY.md 200-line/25KB cap, type taxonomy, skip-derivable), skill authoring (frontmatter rules, <500-line body, one-level refs, evaluation-first), settings precedence/merging; gardener audits against this; §5 = deliberate harness divergences (never propose reverting)

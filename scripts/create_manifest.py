@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""DEPRECATED FOR CREATION (Josh, 2026-10-24): API-built manifests produce
+dependency rows the RLM editor resolves as "Not found" (stamped
+state:"deleted" at save) and package exports that hang in "working"
+forever - re-proven six times in the BSYS-29719/29908 rounds. CREATE
+MANIFESTS IN THE UI ONLY: RLM > New manifest, anchored at the system
+folder (or project), whole tree included, ONLY session-edited assets
+selected. This script remains for its read-only helpers (asset-listing
+shape, mirror writer) until retired.
+"""
+
 """create_manifest.py — Workato export-manifest creation done RIGHT (Josh's algorithm).
 
 Standing-order doctrine (2026-10-15, after three manifest-path failures):
@@ -77,7 +87,7 @@ def crawl_tree(assets, target_folder_id):
     return in_target  # real chain resolution happens in build_rows via chosen assets
 
 
-def build_rows(assets, wanted_asset_ids, wanted_recipe_ids, with_deps=True):
+def build_rows(assets, wanted_asset_ids, wanted_recipe_ids, with_deps=True, dep_recipe_ids=()):
     """Step 2: rows for the edited assets IN their respective folders, with the
     real asset type (recipe → its agentic_skill for MCP tools). Then step 2c:
     crawl each row's dependencies and add THEM as rows in their own folders,
@@ -86,6 +96,7 @@ def build_rows(assets, wanted_asset_ids, wanted_recipe_ids, with_deps=True):
     by_id = {a["id"]: a for a in assets}
     rows = []
     skipped = []
+    dep_ids = set()  # rows added by the 2c dependency crawl (not edited assets)
     for aid in wanted_asset_ids:
         a = by_id.get(int(aid))
         if not a:
@@ -103,6 +114,21 @@ def build_rows(assets, wanted_asset_ids, wanted_recipe_ids, with_deps=True):
             rows.append(row_from(by_id[rid]))  # plain recipe (non-MCP) is fine
         else:
             skipped.append((rid, "no asset row; is it an MCP tool with a skill handle?"))
+    for rid in dep_recipe_ids or []:
+        # FORCED DEPENDENCY rows: cross-project skills (e.g. a genie attaching
+        # another project's MCP-tool skills). Same row shape as the crawl would
+        # produce, but registered in dep_ids so assert_folder_chain applies the
+        # shared-project exemption instead of the single-project span check.
+        rid = int(rid)
+        skills = [a for a in assets if a.get("type") == "agentic_skill" and a.get("provider_id") == rid]
+        if skills:
+            rows.append(row_from(skills[0]))
+            dep_ids.add(int(skills[0]["id"]))
+        elif rid in by_id:
+            rows.append(row_from(by_id[rid]))
+            dep_ids.add(rid)
+        else:
+            skipped.append((rid, "forced dep not found in listing"))
     # de-dupe on (type, id)
     seen, out = set(), []
     for r in rows:
@@ -127,10 +153,11 @@ def build_rows(assets, wanted_asset_ids, wanted_recipe_ids, with_deps=True):
                 row["checked"] = True
                 seen.add(key)
                 out.append(row)
+                dep_ids.add(dep_id)
                 pending.extend(row.get("deps") or [])
             else:
                 skipped.append((dep_id, f"dep {dep.get('name')} ({dep.get('type')}) not resolvable in listing"))
-    return out, skipped
+    return out, skipped, dep_ids
 
 
 def row_from(a):
@@ -147,22 +174,33 @@ def row_from(a):
     }
 
 
-def assert_folder_chain(rows):
+def assert_folder_chain(rows, dep_ids=frozenset()):
     """Step 1 enforcement: every row must carry its folder placement (folder or
     absolute_path) under the SAME project root — pathless rows import nowhere.
     Some dep types are folderless in the workspace (connectors, connections,
-    project properties) — those are exempt; everything else must chain."""
-    FOLDERLESS_TYPES = {"custom_adapter", "connection", "project_property", "account_property"}
+    project properties) — those are exempt; everything else must chain.
+    Dependency-crawled rows (dep_ids) may legitimately live in a SHARED project
+    outside the edited project (e.g. a shared LLM connection under its own
+    project folder) — same doctrine as the '*' system namespace below — so the
+    single-project-span check applies to EDITED (primary) rows only; dep rows
+    must still carry a folder chain."""
+    FOLDERLESS_TYPES = {"custom_adapter", "connection", "project_property", "account_property", "topic"}
     pathless = [r["name"] for r in rows
                 if not (r.get("folder") or r.get("absolute_path")) and r["type"] not in FOLDERLESS_TYPES]
     if pathless:
         raise RuntimeError(f"row(s) with no folder chain at all: {pathless[:6]} — refuse to create")
     roots = set()
     for r in rows:
+        if r["id"] in dep_ids:
+            continue  # shared dependency — its own (possibly cross-project) folder is by design
         path = r.get("absolute_path") or r.get("folder") or ""
         parts = [p for p in path.split("/") if p]
         if len(parts) >= 2:
-            roots.add(parts[1])
+            # "* Connections" (and any "*" system namespace) is Workato's shared
+            # system project — every connection dep lands there by design, so it
+            # never counts as a cross-project span.
+            if not parts[1].startswith("*"):
+                roots.add(parts[1])
     if len(roots) > 1:
         raise RuntimeError(f"assets span multiple projects {roots} — split the manifests")
     return sorted({(r.get("folder") or r.get("absolute_path") or f"[{r['type']}]") for r in rows})
@@ -204,16 +242,17 @@ def main():
     ap.add_argument("--name", required=True)
     ap.add_argument("--assets", help="comma-separated asset ids")
     ap.add_argument("--recipe-ids", help="comma-separated recipe ids backing MCP tools (auto-mapped to agentic_skill rows)")
+    ap.add_argument("--dep-recipe-ids", help="comma-separated recipe ids of CROSS-PROJECT dependency skills (mapped to agentic_skill rows, exempt from the single-project span check)")
     ap.add_argument("--mirror-dir", default=os.path.expanduser("~/orca/projects/google-slides/manifests"))
     ap.add_argument("--profile", default="")
     ap.add_argument("--verify", action="store_true", help="browser read-back verification (recommended)")
     args = ap.parse_args()
 
     assets = load_all_assets(args.profile)
-    rows, skipped = build_rows(assets, (args.assets or "").split(",") if args.assets else [], (args.recipe_ids or "").split(",") if args.recipe_ids else [])
+    rows, skipped, dep_ids = build_rows(assets, (args.assets or "").split(",") if args.assets else [], (args.recipe_ids or "").split(",") if args.recipe_ids else [], dep_recipe_ids=(args.dep_recipe_ids or "").split(",") if args.dep_recipe_ids else [])
     if not rows:
         raise RuntimeError("no rows built — check the asset/recipe ids")
-    chains = assert_folder_chain(rows)
+    chains = assert_folder_chain(rows, dep_ids)
     if skipped:
         print("SKIPPED (fix these):", json.dumps(skipped))
     slug = re.sub(r"[^a-z0-9]+", "-", args.name.lower()).strip("-")[:60]

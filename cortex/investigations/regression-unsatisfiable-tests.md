@@ -56,3 +56,21 @@ What does NOT discriminate: stopped vs running (82252949 stopped+passes; 8223966
 - The VUA-required MCP-server-side flag for the Seismic connector was not independently re-read (classification rests on the 10-11/10-12 job-trace autopsies, which are cited above).
 - 82272814's connection account 22117414 authorization status was not re-read; prior autopsy evidence relied on.
 - No write action of any kind was taken: registry unchanged, no recipes touched, no runs started, no fixtures edited, no Slack.
+
+---
+
+## FIX APPLIED (2026-10-20, Josh-approved verdicts — executed dev-side, live-verified)
+
+**Task 1 — the 6 permanent false-alarm producers:**
+- **3 empty-shell test cases DELETED via Orca UI (tag-and-trusted-click; Test Automation API is RUN-only, no delete verb — both REST delete routes 404'd):** citc-AboAHG4Q-dnsQBe-CD on 82239660, citc-AbsBKJxC-JYEz48-CD on 82727069, citc-AbsoNY6e-TcLtdJ-CD on 82959480. Each API-verified via `wt testcases cases` → zero cases. Registry rows removed from `garden-reports/regression-registry.json`; nightly scan now finds no live cases, so nothing runs or counts.
+- **3 VUA-identity recipes TAG-AND-SKIPPED, not silently removed (Josh task-2 verdict):** 82272814, 82248514, 82256903 stay enrolled; each registry row carries a `note` field with the reason + re-entry path, and `garden-reports/regression-skip.json` carries the same reason + graduation condition (identity-carrying harness run, or tested path re-authored headless-safe and passing stably — then remove the skip entry to re-enroll). The runner masks them (no FAIL lines, no canon auto-seed). 82272814's note also records the stopped-diagnostic/no-green-baseline fact.
+
+**Harness patch:** `scripts/regression-nightly.py` scan-refresh now merges (`{**old, 'name':…, 'cases':…}`) instead of rebuilding registry rows — the bare rebuild would have wiped the new `note` fields on the very next nightly.
+
+**Fixture-failing items — verdicts kept on record (not fixed this pass, per task):**
+- `fixtures/82863111.json` — FAIL ×2 (10-11, 10-12): expect path asserts `job.status` but the response lacks the `job` key; fixture asserts a shape the recipe doesn't produce, can never pass as written. Fix = re-point the expect path at the real response shape.
+- `fixtures/82959481.json` — FAIL(timeout) ×2: invokes recipe 82959481 and polls to timeout with no job id returned; the invoke never lands. Fix = a valid invoke, or manual-only.
+
+**Verified live 2026-10-20:** registry read-back 17 rows (3 removed, 3 noted); skip read-back 4 entries with reasons; runner gating simulation shows only MASKED lines for the identity class and no run path for the removed trio; script `py_compile` clean; merge-patch preserves notes on simulated refresh. Note: masked entries still add to the report's error total by design (dependency-unavailable envelope, not a green — 2026-10-16 policy).
+
+**Not done (out of scope, still open):** the two fixture fixes above; census recommendation 4 (render `detail` on start-ERRORs); recommendation 6 (close the auto-seeded open canon entries for this classified set).

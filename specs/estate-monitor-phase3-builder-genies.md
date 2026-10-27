@@ -94,15 +94,11 @@ A third genie with a full-time job (the harness dreamer, ported):
    skills → verify (real job traces, never green-job status) → ACTION LOG
    row (action, reason, confidence) + memory write-back → structured
    result (status, changes, evidence, manifest rows).
-3. **Review — REAL-TIME, not a gate.** The Reviewer rides alongside the
-   Doer: the AI Action Log is the shared blackboard — the Doer's actions
-   land there as they happen, and a real-time trigger (new-record) invokes
-   the Reviewer on the stream. It picks the work apart as it happens and
-   writes feedback rows the Doer consults before its NEXT action —
-   corrections arrive mid-build, not after it. The Reviewer's
-   interjections are themselves memory (they feed self-improvement). At
-   the end it delivers the terminal verdict APPROVE / FIX-REQUIRED and the
-   grade. No round-trip loop structure; the pass cap remains the fuse.
+3. **Review.** Reviewer genie re-verifies with read-only skills + diff
+   reading + blast-radius check → verdict APPROVE / FIX-REQUIRED (with
+   defects) → FIX-REQUIRED loops the doer (max 2 rounds). At APPROVE the
+   Reviewer GRADES the solution against the best-practices corpus (rubric
+   score, stored).
 4. **Wrap-up.** Manifest assembled from touched assets as they go (real UI
    names) → manifest + a complete build REPORT written to the Jira ticket
    (Manifest Link field + report comment) → labels/status updated.

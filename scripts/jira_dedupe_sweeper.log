@@ -1,0 +1,686 @@
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 7 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+BSYS-29894: duplicate cluster x3 (author 712020:112eb…) — keep 1146757, delete ['1146758', '1146759']
+BSYS-29894: duplicate cluster x3 (author 712020:112eb…) — keep 1146769, delete ['1146770', '1146771']
+BSYS-29894: duplicate cluster x3 (author 712020:112eb…) — keep 1146940, delete ['1146941', '1146942']
+BSYS-29894: duplicate cluster x3 (author 712020:112eb…) — keep 1147011, delete ['1147012', '1147013']
+sweep done: 9 issues scanned, 8 clone rows deleted
+sweep done: 13 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 9 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+BTSUP-79154: duplicate cluster x2 (author 557058:ac6c8…) — keep 1142370, delete ['1142371']
+sweep done: 50 issues scanned, 1 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 10 issues scanned, 0 clone rows deleted
+sweep done: 12 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 2 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 1 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 0 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 4 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 4 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 5 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 2 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 2 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 11 issues scanned, 0 clone rows deleted
+sweep done: 10 issues scanned, 0 clone rows deleted
+sweep done: 12 issues scanned, 0 clone rows deleted
+sweep done: 13 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 10 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 36 issues scanned, 0 clone rows deleted
+sweep done: 42 issues scanned, 0 clone rows deleted
+sweep done: 38 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 2 issues scanned, 0 clone rows deleted
+sweep done: 7 issues scanned, 0 clone rows deleted
+sweep done: 14 issues scanned, 0 clone rows deleted
+sweep done: 11 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 2 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 8 issues scanned, 0 clone rows deleted
+sweep done: 3 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 1 issues scanned, 0 clone rows deleted
+sweep done: 1 issues scanned, 0 clone rows deleted
+sweep done: 1 issues scanned, 0 clone rows deleted
+sweep done: 1 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 0 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 4 issues scanned, 0 clone rows deleted
+sweep done: 6 issues scanned, 0 clone rows deleted
+sweep done: 5 issues scanned, 0 clone rows deleted
+sweep done: 10 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 48 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+BTSUP-79378: duplicate cluster x3 (author 5cb4ae0e4b97…) — keep 1145770, delete ['1145773', '1145775']
+sweep done: 50 issues scanned, 2 clone rows deleted
+sweep done: 17 issues scanned, 0 clone rows deleted
+sweep done: 16 issues scanned, 0 clone rows deleted
+sweep done: 10 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 27 issues scanned, 0 clone rows deleted
+sweep done: 24 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 29 issues scanned, 0 clone rows deleted
+sweep done: 25 issues scanned, 0 clone rows deleted
+sweep done: 21 issues scanned, 0 clone rows deleted
+sweep done: 17 issues scanned, 0 clone rows deleted
+sweep done: 18 issues scanned, 0 clone rows deleted
+sweep done: 15 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 33 issues scanned, 0 clone rows deleted
+sweep done: 30 issues scanned, 0 clone rows deleted
+sweep done: 35 issues scanned, 0 clone rows deleted
+sweep done: 38 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+BTSUP-79582: duplicate cluster x4 (author 5cb4ae0e4b97…) — keep 1148624, delete ['1148625', '1148626', '1148629']
+BTSUP-79396: duplicate cluster x8 (author 5cb4ae0e4b97…) — keep 1145980, delete ['1145982', '1145984', '1145986', '1145988', '1145990', '1145992', '1145994']
+BTSUP-78230: duplicate cluster x2 (author 5cb4ae0e4b97…) — keep 1132480, delete ['1132481']
+sweep done: 50 issues scanned, 11 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 32 issues scanned, 0 clone rows deleted
+sweep done: 31 issues scanned, 0 clone rows deleted
+sweep done: 41 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 47 issues scanned, 0 clone rows deleted
+sweep done: 33 issues scanned, 0 clone rows deleted
+sweep done: 38 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 49 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 35 issues scanned, 0 clone rows deleted
+sweep done: 37 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 31 issues scanned, 0 clone rows deleted
+sweep done: 34 issues scanned, 0 clone rows deleted
+sweep done: 41 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 44 issues scanned, 0 clone rows deleted
+sweep done: 23 issues scanned, 0 clone rows deleted
+sweep done: 21 issues scanned, 0 clone rows deleted
+sweep done: 21 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 28 issues scanned, 0 clone rows deleted
+sweep done: 26 issues scanned, 0 clone rows deleted
+sweep done: 20 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 27 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 20 issues scanned, 0 clone rows deleted
+sweep done: 28 issues scanned, 0 clone rows deleted
+sweep done: 18 issues scanned, 0 clone rows deleted
+BTSUP-79678: duplicate cluster x4 (author 5cb4ae0e4b97…) — keep 1149783, delete ['1149784', '1149786', '1149788']
+sweep done: 35 issues scanned, 3 clone rows deleted
+sweep done: 40 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 50 issues scanned, 0 clone rows deleted
+sweep done: 27 issues scanned, 0 clone rows deleted
+sweep done: 31 issues scanned, 0 clone rows deleted
+FAIL: search HTTP 0: {"raw": "[Errno 8] nodename nor servname provided, or not known"}
+sweep done: 15 issues scanned, 0 clone rows deleted
+sweep done: 12 issues scanned, 0 clone rows deleted
+sweep done: 19 issues scanned, 0 clone rows deleted
+sweep done: 26 issues scanned, 0 clone rows deleted
+sweep done: 22 issues scanned, 0 clone rows deleted
+sweep done: 18 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 573, in _readall_chunked
+    chunk_left = self._get_chunk_left()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 556, in _get_chunk_left
+    chunk_left = self._read_next_chunk_size()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 516, in _read_next_chunk_size
+    line = self.fp.readline(_MAXLINE + 1)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 16 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 101, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 70, in http
+    with urllib.request.urlopen(req, timeout=30) as r:
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 214, in urlopen
+    return opener.open(url, data, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 517, in open
+    response = self._open(req, data)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 534, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 494, in _call_chain
+    result = func(*args)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 1389, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/request.py", line 1350, in do_open
+    r = h.getresponse()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 1349, in getresponse
+    response.begin()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 316, in begin
+    version, status, reason = self._read_status()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 285, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+sweep done: 50 issues scanned, 0 clone rows deleted
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer
+Traceback (most recent call last):
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 126, in <module>
+    main()
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 122, in main
+    sys.exit(sweep(auth, dry=dry))
+  File "~/.claude/knowledge/scripts/jira_dedupe_sweeper.py", line 67, in sweep
+    code, res = jira.http("GET", f"/rest/api/3/issue/{key}/comment?maxResults=50", auth=auth)
+  File "~/.claude/knowledge/scripts/jira.py", line 71, in http
+    code, body = r.status, r.read().decode()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1270, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1128, in read
+    return self._sslobj.read(len, buffer)
+ConnectionResetError: [Errno 54] Connection reset by peer

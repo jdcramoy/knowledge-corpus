@@ -70,3 +70,10 @@ access to create the admin key, so no blocker here."**
 Consumer session: `~/orca/workspaces/workbench/Google-Semantic-MCP/scripts/phrase-miner/mine.mjs`
 (keys docs in its header comments). Ticket doc:
 `projects/btsup-customer-replies/BTSUP-78827-claude-projects-extract.md`.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Anthropic Compliance API](domains/anthropic-compliance-api.md) — PROVEN path for claude.ai org-data pulls (projects/sessions/users): keychain token `anthropic-compliance-key`/josh stashed 2026-10-11, feature enabled, orgs+projects endpoints live-verified 200 on 2026-10-15; gotchas: x-api-key not Bearer, tagged IDs ≠ claude.ai URLs, null creators for departed members, no proxy base-URL routing (silent 404). Check here BEFORE routing org-data asks to org owners (born: BTSUP-78827 reply overstated known territory as pending prerequisites)

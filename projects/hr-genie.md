@@ -8,6 +8,10 @@
   QA'd by project-dreamer's 5b lens. CORRECTION (tracker-verified
   2026-10-08): Consumer Endpoints recipes now live in folder 35712142, not
   35693717 as cited in the 2026-10-05 build note below.
+- Convention (2026-10-22): NEW notification families adopt the Event Outbox pattern —
+  `Workday-Development/docs/workday/build-specs/EVENT-OUTBOX-PATTERN.md` (per-family semantic
+  matrix first; state machine, dedup, retry caps, audit columns, kill switch; no shared
+  recipe, legacy assets never retrofitted outside a promotion window).
 - Canonical master doc: ~/Documents/Claude/HR-Genie-Master-Knowledge-Doc.md
   (created by consolidating five fragmented dated handoffs — do not add
   dated handoff files next to it; update in place).
@@ -1355,6 +1359,25 @@ lane is wiring-proven only — no >100-event conversation exists in dev yet; wat
 first real multi-page drain (158156 cursor-history rows never written by a LIVE commit
 so far).
 
+## Approved HR Genie fixes EXECUTED (2026-10-20, Josh "approve all") — BSYS-26810/27818
+
+All in dev. Recipes touched: [update_my_contact_info 82959472](https://app.workato.com/recipes/82959472) (tool 254984), [view_my_tax_document_elections 82959476](https://app.workato.com/recipes/82959476) (new tool 276755).
+
+1. **Tool 254984 VUA flip: DONE + verified.** Root cause was NOT the tool binding; the recipe's workday_rest config entry had NO `personalization: true` (the binding flag mirrors it). Repair = stop recipe → direct `PUT /api/recipes/82959472 {name,description,code,config}` with personalization:true (BSYS-26815 method; code byte-verified identical post-PUT) → start. Tool binding flipped to VUA=Yes WITHOUT any tool PATCH — recipe-side config propagates to the binding flag live.
+2. **Served description fix: DONE + verified, with a mechanism observation.** Recipe push (trigger description via builder set_input_field_v4_mode plaintext + recipe description via update_asset_metadata) did NOT update the served tool description — the binding snapshots the concatenation (trigger desc + recipe desc, blank-line separated) at add/re-save time. Fixed via MCP server page (`/mcp/<handle>/details`, the /ai_hub/mcp path 404s now) → "Edit tool description" dialog (textarea, native setter + input event) → Save = `PATCH /web_api/mcp/servers/<handle>/tools/254984.json` 200. Catalog read-back showed SOAP text immediately.
+3. **Tax-elections registered: tool 276755, Active + VUA=Yes on first add.** Order mattered: set personalization:true on BOTH connections (workday_rest 19218617 + workday 19760790) of 82959476 BEFORE the Add-tools flow (add-time-only law). UI: server details → Add tools → "Add from this project" → one checkbox (view_my_tax_document_elections) → Add tools. 27→28 tools, all 27 prior tools verified untouched. Note the recipe ALSO lacked personalization on both conns before this (caught pre-registration).
+4. **First live test of 82959476 (job [j-Ac46xxec-KmkXWr-CD](https://app.workato.com/recipes/82959476/job/j-Ac46xxec-KmkXWr-CD)): identity worker=me resolved, but SOAP Get_Tax_Document_Deliveries REJECTED: `Company_Reference` + `Form_Group_Reference` are REQUIRED in Request_Criteria, and only Form Groups `Canada` / `Canada_Electronic_Only_Default` / `USA` are supported.** The built envelope carries only Worker_Reference (the plan said Worker_Reference-only scoping was schema-confirmed — it is not). Monitor's clean-error design worked (structured error, no opaque fault).
+
+   **FIX EXECUTED same day (Josh design call: USA + Canada form groups) — envelope rebuilt, VUA intact, end-user grant now the only blocker:**
+   - New flow: step 6 `Get_Workers` (Human_Resources, Request_References Worker=WID, Response_Group `Include_Employment_Information,Include_Organizations`) → step 7 custom-code resolves the worker's primary Company (pods under `Position_Organizations_Data` where `Organization_Type_Reference` Descriptor = 'Company'; prefer `Organization_Reference` subtree WID; org-type objects carry their OWN WIDs — the naive first-WID scan grabbed the org-TYPE WID once, bug fixed) → guard returns friendly error if no company → steps 10/11/12 `Get_Tax_Document_Deliveries` **user-defined-payload XML**, one call per form group (`Form_Group_Reference` is max_occurs=1 in the WSDL; `Delivery_Group` is the non-WID ID type, proven values USA / Canada / Canada_Electronic_Only_Default) with Company_Reference + caller-Worker_Reference (WID) → step 13 custom-code merge dedupes by (delivery reference ID + form group descriptor + override), key = `delivery_id|formGroup|e/p` → single return.
+   - **Workato workday-connector gotchas (new, costly):** (a) setting `Request_Criteria` as a WHOLE object in recipe_builder silently DROPS the `Worker_Reference__ref` object key at push even though `recipe_builder_show` renders it — set subfields individually by path, and the live-accepted path is `Request_Criteria.Worker_Reference` (string ref field), not `__ref`; (b) string ref-field values with spaces/colons: the `Type:value` customization + `<!--no_split-->` wrapper did NOT make guided mode work — the reliable form is `use_user_payload=true` + hand-built XML with explicit `wsdl:type` attrs (pills interpolate fine inside the f-string payload); (c) `snake_case` module name for custom code = `workato_custom_code`, action `invoke_custom_ruby_code`.
+   - **Company_Reference resolution (live-verified):** worker Josh → Company "Workato Inc.", org code `E1`, WID `3ed7b665cef21001256a4153abd10000`; the connector normalizes response reference IDs to flat `<Ref>_<IDType>` keys (`Organization_Reference_WID`, `Organization_Reference_Company_Reference_ID` = "Workato Inc."). CompanyReferenceEnumeration = WID / Company_Reference_ID / Organization_Reference_ID.
+   - **SPLIT-TEST VERDICT (the important finding):** identical payload runs green on the backend ISU conn 19760013 (clean `{asOf, noElections: true, elections: []}` — worker has no elections on file in the impl tenant) and fails on the end-user conn 19760790 with Workday's `Specify a valid company. The company you submitted is invalid for your request.` — same XML, same tenant ⇒ **the end-user identity lacks the Workday domain permission for tax-document-delivery reads and Workday masks it as a validation error.** Recipe shipped on the approved VUA configuration (end-user connection, personalization:true restored after the connection swap dropped it — second observed push-drift repair via direct PUT, code byte-identical). Remaining: Workday admin grant (Payroll tax-document-delivery read domain for the employee security group) OR Josh approves re-pointing the SOAP data leg at ISU with worker-WID scoping (scoping is criteria-pinned to the caller's own WID either way).
+   - Test surface: MCP gateway tools/call (OAuth DCR + PKCE + Orca consent; cookbook recipe works — note Orca's `localhost` callback needs a dual-stack listener, IPv4-only bind misses `::1`).
+5. **Grant request FILED (comment 1143551 on BSYS-26810):** Change Home Contact Information (SOAP Service) initiating action on the Home Contact Change BP for the employee security group; Human_Resources Change_Home_Contact_Information + Get_Change_Home_Contact_Information for the end-user token; Person Data + Self-Service Home Address/Phone/Email domains. REST grants explicitly not requested (path abandoned). Waiting on the Workday admin.
+6. **Manifest verified (not rebuilt):** all three skills are agentic_skill rows in manifest **361068** "HR Genie 2026-10 promotion batch" (folder Core/HR Skills/Workday MCP) — but `checked: false, state: new`; the promotion batch assembler must tick them. Manifests read route: in-page `/export_manifests/<id>.json` (assets array; agentic_skill rows key the recipe as `provider_id` — the row `id` is a row id, NOT the asset id; ID-matching on `id` gives false negatives).
+7. UI route notes: Enterprise MCP server pages now live at `/mcp/<handle>` (+ `/details`), NOT `/ai_hub/mcp/...` (404); the Test-recipe caret menu remains flaky (opened 2 of 3 attempts; hover+ref-click is the reliable sequence).
+
 ## Related (KB bridges)
 
 <!-- kb-bridges:v1 begin -->
@@ -1463,3 +1486,173 @@ Verdict: the system genuinely resets, not just logs. Evidence from the three pro
 - 253 distinct end users remediated; top user needed 9 resets (chronic offender, re-caught every time).
 - Open item: audit sweep [82242831](https://app.workato.com/recipes/82242831) has 196 lifetime failed jobs (of 9,437) — never autopsied.
 - Worker traces are mask_data=true, so verification must go through the connection list, not trace bodies.
+
+## BSYS-29773/29774/29775 — Org Chart → Workday pipeline (2026-10-17/18, Phase 0 code done + Phase 1 BUILT in dev)
+
+Plan: Workday-Development repo `docs/workday/org-chart-integration/PLAN-BSYS-16390-ORG-CHART-TO-WORKDAY-2026-10-17.md`.
+Epic **BSYS-29773** (26 pts, VMT BSYS-21305, Relates: BSYS-16390 + BSYS-28841); stories 29774 (Phase 0 form
+instrumentation), 29775 (Phase 1 intake), 29776 (Phase 2 pre-BP approvals), 29777 (Phase 3 manager-VUA BP kickoff).
+
+- **Phase 0 chart-side CODE DONE** (branch `suggest-change-impact-preview`, commit 363f49f, patch at
+  `docs/workday/org-chart-integration/0001-...patch`): impactOf/receivingManagerOf/impactNote in
+  `src/lib/suggestChange.ts` (client tier: reporting_line | cross_business_unit; the chart can NEVER derive
+  "routine" — proposedManager never proposes the current manager, so a no-derivation team sends NO impact
+  block), review-screen warning callout, `context.impact` riding the §14.2 body backward-compatibly,
+  api-contract §14.2/§14.4 updated, 47/47 tests green. **PR blocked: Josh (`jcramoyWKTO`) has push:false on
+  the repo — Weizhuang must add him as collaborator (Write).**
+- **Repo access playbook** (see auto-memory org-chart-repo-access): gh CLI org-SSO grant broken via Okta
+  (Authorize step never renders); fine-grained PATs org-blocked; classic PAT (`ghp_`) + Configure SSO →
+  Authorize reads fine; clone via `git -c credential.helper= clone https://oauth2:$(cat /tmp/gh_pat)@github.com/...`
+  (http.extraheader route failed; strip clipboard whitespace FIRST — trailing newline = "invalid credentials"
+  while curl works). Repo's PR rules: feature PRs → `preview` (squash-merge), main only via promote PRs.
+- **Phase 1 BUILT in dev (2026-10-18):** folder **35873299** "Org Change Suggestions - Org Chart" under
+  Consumer Endpoints (35693717 — the 35712142 correction in older notes is WRONG for dev; 35712142 is the
+  OOO endpoint's SUBfolder "Get OOO Status - #team-ui" under 35693717); table **Org Change Suggestions
+  161963** (27 cols, State machine VALIDATED→TICKETED/REJECTED/WITHDRAWN); recipe **API | Receive Org
+  Change Suggestion 83152837** (21 steps, RUNNING, jira 18136359 + jira_service_desk 18136383) — 400 shape
+  gate with specific reason, idempotent replay by Idempotency-Key, server tier ROUTINE/REPORTING_LINE/
+  CROSS_BU/UNKNOWN derived independently of the chart's advisory, HROPS JSM request filed AS THE SENDER
+  (find_user → raiseOnBehalfOf, fail-closed on unresolvable), best-effort org-chart-suggestion label in
+  empty catch, outer catch parks the record REJECTED + clean 500 (two-signal rule). API endpoint
+  **24139439** POST /v1/org-change-suggestions in collection 1404598 (created via
+  `wt api POST /api/api_collections/1404598/api_endpoints`). Manifest **367064** (project-folder anchor
+  30275122), read-back verified 2 rows; mirror in Workday-Development/manifests/.
+- **BLOCKED on Josh:** endpoint 24139439 activation is UI-only, and **the Orca browser session has NO
+  "Workato BT AI" membership** — the workspace picker lists only AHQ | BT / AHQ | AI / AHQ | HR / HR
+  (Sensitive) + others. Dev-workspace UI steps (endpoint activation, access-profile/token, Okta/OpenID
+  Connect policy) need Josh's own browser. The recipe records requester identity source per call
+  (`jwt_claim` vs `header_fallback_dev_only`) so the token-policy period can't fake verified identity.
+- **AIRO gotchas hit (new):** `set_condition` rhs must be the RAW string (`"true"` — passing `"\"true\""`
+  double-quotes and compares against the literal quote-wrapped text); `set_condition` requires TOP-LEVEL
+  `operand` ("and"/"or") — omitting it errors misleadingly as "operand: Field required" on the condition;
+  ruby() formula whitelist bans `.size` in conditions too (use a unary `present` on `records[0]` key field
+  instead); project_property pills in set_input_field need the `f"{...}"` prefix like any pill (bare
+  `{project_property['X']}` → "Unsupported expression type: Set"); adhoc action fields unlock
+  progressively (mnemonic+verb → path/types → input.schema/output → input.data.*); error_handling blocks
+  show an explicit numbered catch step whose children take parent=<catch step number>; every insert
+  renumbers downstream steps AND the catch steps (re-get datapills after each insert).
+- **Workday find (2026-10-18):** Staffing REST v6 has a DRAFT-THEN-SUBMIT org-assignment flow —
+  `POST /workers/{ID}/organizationAssignmentChanges` creates the change event as a DRAFT ("same Workday UI
+  validations apply", nothing persists), `POST /organizationAssignmentChanges/{ID}/submit` initiates the
+  Change Organization Assignments BP (empty body = Submit button; Save-for-Later = status id
+  d9e41a8c446c11de98360015c5e6daf6), `GET /organizationAssignmentChanges/{ID}` reads it back. Secured by
+  **Business Process Type: Change Organization Assignments for Worker** (Scope: Organizations and Roles) —
+  so the manager-VUA kickoff needs NO new ISU write grants. Workday REST secures by domain/BP-type, not
+  OAuth scopes (spec's OAuth2 has empty scopes). Config-request draft updated:
+  `docs/workday/org-chart-integration/WORKDAY-CONFIG-REQUEST-ORG-CHANGE-PIPELINE.md`.
+
+- **2026-10-18 (later) WORKDAY-FIRST REDESIGN + S21 BLOCKER:** Josh corrected the design — the
+  HROPS ticket is ACCOMPANYING only (best-effort retries=0 monitor, gated on find_user, can
+  never fail the flow), the terminus is the Workday Change Organization Assignments event.
+  Built + live: WID resolution via the ORG-CHART SNAPSHOT index (table 137030, col
+  Normalized Work Email 170e70e3 → Employee WID f8a2c86e; Josh resolved to
+  8ec8136c…c5e0000), unknown-person 400 at the door, record State WORKDAY_EVENT_CREATED +
+  workday_event_id folded into the Validation Result column, catch parks REJECTED with the
+  Workday error. **TERMINUS BLOCKED: `404 S21 "not found: organizationAssignmentChanges"`** =
+  the permission-masked 404 (OOO precedent) — the ISU/ISSG lacks the Change Organization
+  Assignments for Worker BP-type + Staffing Organizations domain grant; config request doc
+  carries the S21 evidence. **NEW PLATFORM FACTS:** (1) the Workday REST adhoc connector
+  DROPS QUERY STRINGS — `GET /workers?email=…` (even %-encoded) returned the unfiltered
+  1,550-worker set; worker resolution must be path-based (WID from a source-side index) or
+  WQL — never query params; (2) Workato adhoc actions on absent request fields deliver ""
+  (empty string), not nil; (3) `JSON.parse("null")` RAISES on Workato's json gem — a
+  `rescue → return raw` parser turns "null" into the literal string "null"; normalize
+  before parse; (4) undeclared request headers are DROPPED by the API-platform trigger —
+  every header the recipe reads must be in request.headers schema; (5) object pills MUST
+  bind via `ruby("bindings.x.to_json")` — f-string interpolation of an object pill yields
+  Ruby-hash-inspect (`=>`) which fails JSON.parse. Test UAT artifacts: HROPS-236..239
+  (real JSM tickets, marked safe-to-close). Dev endpoint live:
+  https://apim.workato.com/workato-bt-ai-dev/hr-genie-consumer-endpoints-vv1/v1/org-change-suggestions
+  (access profile org-chart-app 1384853, token in keychain `org-chart-app-token`).
+  The Orca browser "workspace problem" was a FALSE diagnosis — fetch('/recipes/<id>')
+  XHR probes 404 on HTML routes; the browser was on the right workspace all along (Josh
+  corrected; trust rendered page text + sight.py, not fetch-status probes of HTML routes).
+
+- **2026-10-18 (final) PHASE 2 BUILT — conversational confirmation loop live:** assets (all
+  folder 35873299, manifest 367064 = 5 rows verified): table **Org Change Suggestion
+  Confirmations 161970** (per-confirmer rows: role/state REQUESTED→CONFIRMED|DECLINED/attempts
+  cap 3/requester email); **confirmation router** in 83152837 (plan step → tier recipient set:
+  REPORTING_LINE = receiving manager, CROSS_BU = + people partner; VP confirmation deferred to
+  the org-lookup follow-up); **skill Confirm Org Change Suggestion 83152934**
+  (skl-Abzzr48F-bdLtab-CD, ATTACHED to HR Genie gin-AYbxpMha via genie_update after
+  genie_get in the same session — fresh-session-only update fails with a session-keyed
+  lookup bug) — identity = start_workflow context user_email (Genie-verified, never
+  user-claimed); **REC | Org Change Confirmation Reminders 83152938** (daily 8:15, cap 3,
+  bump-on-send). **Messenger switched to invoke_skill mode**: skill_instruction carries the
+  suggestion + "run the skill Confirm Org Change Suggestion with record_id=… decision=…"
+  → the Genie PRESENTS the task and captures the decision conversationally (fixes the
+  notify-mode "doesn't recognize the task" gap Josh caught). **CRITICAL TABLE TRAP
+  CONFIRMED:** data_table_update with columns REPLACES ALL COLUMN UUIDS (the recipe step
+  bindings silently go stale — the step still shows old param keys and FAILS at runtime);
+  after ANY column change: re-select table_id on every step touching that table, re-map
+  params with the new field ids, remove the old keys, and re-check the ruby CODE strings
+  that embed field-id keys (the chain-state reader needed the new State id too).
+  **PIPELINE STATE:** full E2E green through the S21 wall (fail-open on the Workday refusal:
+  error recorded on the record + State stays VALIDATED via the conditional ruby on
+  update_record_16's Error Message; flips fail-closed at Phase 3). Awaiting: (a) Josh sends
+  the Workday config request (S21 evidence in
+  docs/workday/org-chart-integration/WORKDAY-CONFIG-REQUEST-ORG-CHANGE-PIPELINE.md), (b)
+  Weizhuang collaborator Write → Phase 0 PR, (c) a real confirm conversation in Josh's
+  Genie DM → PRE_APPROVED flip proof. Gateway 504s on ~9s jobs — the chart's 20s client
+  timeout + idempotent replay absorb it.
+
+- **2026-10-18 (E2E CHAIN COMPLETE) Submitter + authority check built:** **REC | Org Change
+  Suggestion Submitter 83153929** (hourly): State=PRE_APPROVED records with a Workday Event Id →
+  POST organizationAssignmentChanges/{id}/submit → SUBMITTED_TO_WORKDAY; per-item monitor
+  retries=2 + FAILED parking. Intake gained the **server-side authority check** (Josh's Option
+  B): requester resolved in snapshot 137030, authorized = self | direct_manager (verified from
+  Employee ID b034d738 vs Manager Employee ID 3148b9b7) else chart_asserted (PP/deeper —
+  recorded, gated by the confirmation chain; strict server-verify for those needs hrbp data in
+  the snapshot); 403 refusal at the door. Suggestions table grew Authority Check +
+  Workday Event Id columns — **BOTH tables truncated + re-schema'd** (all field ids
+  regenerated again; every step in 83152837 + 83152934 rewired to the new ids and
+  persisted-verified). Final manifest 367064 = 6 rows (3 recipes + 2 tables), all 4 recipes
+  RUNNING. **THE CHAIN IS COMPLETE ON PAPER:** intake → authority → classify → Workday draft
+  (S21-walled, fail-open, error recorded) → accompanying ticket → invoke_skill confirmations →
+  PRE_APPROVED → hourly submit → Workday BP. Remaining: (a) the S21 grant (config request with
+  Josh), (b) a live confirm conversation (PRE_APPROVED flip proof), (c) the Okta/OIDC policy
+  swap to kill the header fallback, (d) Weizhuang collaborator Write → Phase 0 PR, (e) red-team
+  before any promotion (Tier 1: external trigger + PII).
+
+## 2026-10-21: [requester] FTR fixes on BSYS-29498 (dev, pending Josh QA + Jira reply GATED)
+[requester]'s comment 1144476 → 5 items, 4 fixed in dev, package re-cut 42285005 (ZIP-verified), NO Jira reply until Josh manual QA.
+1. **v2 rename**: 82794233 → "FUNC | HR Genie | Resolve Active MCP Runtime Child". Metadata rename requires the recipe STOPPED ("can't modify running recipe") — stop → rename → start.
+2. **Hardcoded folder (auditor 82862838)**: ad-hoc HTTP step had folder_id=30326966 baked into the URL (URL literals are NOT import-remapped — the step's own "deployment-remapped" comment was wrong; [requester] caught it). Fix = sibling 78545249's pattern: list projects + ruby resolver (explicit PROJECT_NOT_FOUND raise) + dynamic path. TRAP: **recipe_builder CANNOT author project_property pills** — bound the project name as a literal "Agentic | HR Self Service Genie" (identical name both envs, zero env-specific ids, fail-closed). v4-mode plaintext REJECTS raw `#{_dp(...)}` pill markers.
+3. **Batch upsert (rollup 82863448)**: live loop → single `upsert_records_batch` (max 1000/batch, PK metric_key) via list-comprehension on `records` — set path `records` with one comprehension string `[{'parameters': {...}} for item in source]`, AIRO compiles to mapped pills. TRAPS: (a) **upsert_records_batch FAILS "Records value must be present" on EMPTY records** — old loop was a silent no-op; wrap in `if candidate_count > 0`; (b) `now` keyword unusable inside a comprehension (compiles as None_None pill) — capture in a DateTime declare_variable first; (3) positive+empty paths both proven by forced runs (j-Ac4TdeDf-xk4Pzc-CD: 3 records in one call).
+4. **MCP server rename** (UI-only, no REST surface — Developer API 404s /api/mcp_servers): env-switch to Development first (header showed Production), server page /mcp/<handle>/settings → name Edit → **contenteditable span + ✓/✗ icon buttons (no "Save" text button)** → Meta+A → type → click `.editable-text__control_confirm`. First attempt silently cancelled on blur — keep the sequence in one block; verify persistence after RELOAD.
+- **ACCESS ANSWER (recommendation, Josh decides)**: end-user groups gate Slack/Teams/GO deployments only; the Analyst genie is collaborator-gated (Agent Studio) + token-based MCP (hashed, read-only) → an end-user group is NOT required today; create one (Workato Identity, e.g. "BT Enterprise Architecture" mapped to Okta) only if the analyst genie goes to a broader Slack/GO audience.
+- **wt dt records API route truth (cost a row!):** `--data '{where/sort/continuation}'` route IGNORES where+sort+continuation silently (returns first 20 rows always); the `--where 'col=val'` GET route DOES filter — string equality only (booleans 400). **DELETED the wrong row by trusting the --data where filter** — restored the 2026-10-07 test tool_call row from captured output (new record id; corpus intact). LAW: never delete by a record id obtained from a route whose filters are known-ignored — locate client-side or via the equality route, count matches, then delete.
+- All 4 fixes ZIP-verified in package 42285005 (resolver new name; auditor 30326966 only in an audit-trail comment, 0 in code; rollup foreach count 0; MCP name clean). Smoke: force-run j-Ac4TmhDH + replay j-Ac4TncP4 green.
+
+### 2026-10-21 addendum: hardcoded-id sweep found a SECOND defect in the auditor (Josh: "no hardcoded recipes anywhere?")
+- **The instrumentation detector hardcoded emitter ids**: auditor's Diff-coverage ruby matched skill code against literal dev ids 78563374 (Record MCP Tool Usage Identity) / 82862028 (Emit App Event). Import remaps structural refs, NOT string literals → in prod every skill misreports DARK/UNINSTRUMENTED_OFF. Same class as [requester]'s folder finding; caught by the package-wide sweep.
+- **FIRST FIX WAS ITSELF A REGRESSION (caught same session)**: I re-resolved the folder to the project ROOT — but 30326966 was the "Workday MCP" skills LEAF folder; the root query returns 0 recipes and the orphan cleanup then DELETED all 41 mcp_skill coverage rows. Repaired: the "bound skills folder" now resolves from NEW env-scoped project property 'HR Genie Telemetry Skills Folder Id' (dev=30326966) and emitter ids from 'HR Genie Telemetry Emitter Recipe Ids' (dev=78563374,82862028) — both fail-loud if blank. Force-run j-Ac4kbCYc rebuilt 41 mcp_skill rows. **PROD IMPORT RUNBOOK (CORRECTED per Josh 2026-10-21: property ROWS travel with RLM, VALUES do not): after import the 2 new property rows exist in prod BLANK — set prod values on them BEFORE starting 82862838 (the fail-loud guard covers exactly that blank window).** Ticket description edit pending Josh's go.
+- **recipe_builder DOES support property pills natively**: `set_input_field` with `ruby("bindings.prop.to_s", bindings={"prop": project_property['Property Name']})` — works (rendered `project_property['...']` in the DSL). The raw-pill-marker route is unnecessary. (Learned AFTER two raw PUTs; the pills also survive raw PUT → AIRO pull+push round-trip, which is the repair for raw-PUT code_errors — the round-trip DID drop unset code_input.data bindings, so re-set schema+data after any raw PUT.)
+- **Raw-PUT lessons**: PUT body = {name, description, code} only (full GET payload 400s on config/account_id); platform DSL `as` names are STABLE random suffixes (no renumbering when deleting steps — just splice + fix `number` fields incl. LOOP CHILDREN, else start fails "number out of sequence"); start-validation errors surface in `wt recipes start` stdout — the CLI "silent no-op" is often these code_errors.
+- **wt properties API truth**: POST /api/properties?project_id=<id> (query param, STRING) with {"properties": {name: value}} HASH form; list form {"properties": [{name,value}]} 400s "Must be a Hash".
+- Final package 42289965 ZIP-verified: 0 folder-ids in URLs, 0 bare emitter ids, 0 gin/ginct/mcps/skl handles anywhere; rollup batch upsert in, foreach 0.
+
+**BTSUP-79353 duplicate-chats hotfix (2026-10-21, prod v3 + dev backport):** the BSYS-29757 atomic claim
+worked, but the claim key was minted fresh every pass — `event_id` was the unstable WQL document.id (NOT the
+request WID; Resolve Time-Off Context returns no request WID despite its schema hint) and Process
+Decision/Reminder minted `RETRY_(attempts+1)` occurrences on every pass whenever the tracker row read
+PENDING (lane races) — so the dedupe never matched. One approval → 5 chats; Send Genie Event ramped
+27/day (10-16) → 338/day (10-20). Fix (formula-only, dispatcher+claim untouched): dispatch event_id →
+span-stable `worker_wid|type_descriptor|span_start|span_end`; retry gate FAILED-only (drop PENDING);
+SUPPRESSED marks tracker terminal. Red-team PASS-WITH-NOTES — known gaps: identical-span re-decisions
+suppress permanently (claim-TTL follow-up needed), crash-between-claim-and-send unrecoverable, nil spans
+degenerate keys. NEW TRAPS: (1) Workato formula validation fires at START, not PUT — a malformed pill
+(truncated `}')` when slicing a pill out of an existing formula) PUTs fine, then start fails with
+"expression is unsafe" and the recipe is left STOPPED — always re-GET running:true and restart; (2)
+`wt manifests assets --include-all` dep-crawl cascades across projects via genie/skill deps — for a
+focused recipe-chain manifest, build rows directly from the listing (row_from) instead of the recursive
+dep walk; (3) create-manifest response may print rows:0 while the record actually persists — verify via
+the in-page /export_manifests/<id>.json route. Evidence: docs/hr-genie/BUG-evidence-BTSUP-79353-*.md;
+manifest 369303.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [HR Genie](projects/hr-genie.md) — **P2 HOTFIX 2026-10-10 (~19:00 PT): 2:56 AM re-import overwrote prod messenger 82120574 chat_trigger_handle with the DEV option id (ginct-AbbxJxmX) → EVERY send failed "Genie is not found or has not been started" ~15 h, jobs green (monitor caught all) — fixed live: re-set all 4 send steps to prod handle ginct-Ab9LJNRB via set_input_field_v4_mode plaintext, push, restart, verified 12/12 clean + genie caller list repopulated; trigger handles are env-scoped picklist ids, import remap skips them (run-book gate needed); set_input_field v3 JSON-stringifies all values — use v4-mode plaintext**; **BSYS-29283 CLOSED DONE 2026-10-10 (deployed live + all import collateral repaired: stub rewiring → repointed to ISU Prod 19909763 code-identical + 31 recipes running; identity funcs re-wired to CON | Workato API HR Genie 22284446 with a Development-scoped IAM client token — Identity IAM API refuses ALL Production-scoped client tokens, key lesson — live test passed, ticket Closed/Done with canonical PROD connections table in file: ISU 19909763 / REST 19234290 / VUA 22080799 / IAM 22284446); import lessons (stub-vs-null binding inconsistency, config-level reference checks, curl --data-binary @file for oversized recipe PUTs, properties API string project_id) in file**; **BSYS-28306 US payroll-critical-data nudge BUILT+verified in dev 2026-10-10 (recipe send_payroll_data_nudges_us 82959797 STOPPED, grant-gated; US row in shared region-config 158555 set to 3 required fields + dry_run + real Workday link; bank-election scan WIRED via Get_Payment_Election_Enrollments (authorized, Role_ID_Reference_WID join) closing the non-US variant's unresolved gap; NEW domain-strip guard: blind-scan detection forces safety_hold rows, structurally cannot mass-nudge; live force-run proofs: 999 flagged → 999 safety_hold ledger rows landed (population closed) + rerun deduped 999/0-new/0-sends (j-AbspcgdB-bggboh-CD, j-AbsphHHF-6Br3Mw-CD); Get_Period_Schedules NOT authorized + personal-data values stripped 0/999 (probe jobs cited in Jira comment 1134851); BLOCKERS = Workday domain grants (Personal Data/National ID/Contact + Payroll schedules) then flip send_mode=live; traps: start-validation rejects pill-path .to_json (use ruby bindings passthrough), snippets return BARE hash (wrapped {'output'=>} silently nils pills), inspect parser needs sign-aware time token + weekday-date token, clock trigger action name = scheduled_event, get_user_by_email raises on blank email (lookup INSIDE the live gate))**; **BSYS-28307 non-US payroll-critical-data nudge BUILT+verified in dev 2026-10-10 (scheduled scan-and-dispatch recipe 82959747 RUNNING daily 07:30 + region-config table 158555 + nudge log 158554; scan→classify→dedupe→DM pipeline proven green end-to-end with ledger audit 583/583 distinct/0 dups, all dry_run zero live DMs; sends via HR Genie Operations Workbot 20369210; TWO blockers before live UAT: Workday domain grant gap (Birth/National-ID presence unreadable — 0/999 — false-flags everything, BSYS-26817-class grant needed) + truncate dev ledger before live period; test cases/editor Test + ops-channel digest + live-send flip staged as resume; NEW LAWS in domain file: select_connections commits immediately + push wipes it (select LAST), nested code_input objects arrive as inspect-strings (scalar leaves only), Get_Workers country criteria silently dropped (client-side filter is the path), Count<1000)**; **BSYS-28420 pipeline self-health watchdog BUILT+lifecycle-verified in dev 2026-10-10 (REC 82959774 every-5-min + FUNC heartbeat 82959725 + tables 158559/158560 in new Pipeline Watchdog folder 35769475; 7 monitored recipes touched with swallowed heartbeat calls only; alternate route = Email by Workato (no connection); alert/dedup/recovery/no-second-recovery all proven with job IDs; resume: dedicated Slack app + own API token + controlled-stop UAT; traps in project file)**; **BSYS-28310 view_job_compensation_range BUILT+live-verified in dev 2026-10-10 (recipe 82959755 RUNNING, skl-Absp3hhd-x6gEfC-CD; two-gate design per plan; VUA personalization flip done+verified; TENANT FINDING: no manager-readable comp-range surface — allCompensationGrades/allJobProfiles WQL 403 + SOAP Get_Compensation_Grades fail-closed under VUA, probes stopped w/ evidence; skill falls back clean non-exposing; live test j-AbspLebd-RLBp6h-CD + audit readback metadata-only; REMAINING: MCP-server picker attachment (27 tools, full-replacement trap; update_my_contact_info vua_required=false drift noted) + UAT four cases blocked on a live Job Change event in dev; set_condition rhs + CodeMirror inserttext + VUA-flip-UI traps in domain file)**; **BSYS-28309 LoA notifiable+approvable BUILT+live-verified in dev 2026-10-10 (new FUNC Resolve Inbox Leave Context 82959603 running + wired into row processor 74482074 with gated fail-open leave lines in Detail Summary; live proof: rebuild job j-Absp9HPd-49LBrP-CD → function job j-AbspEDgm-kmdX9B-CD → enriched ledger row f75983a3 SENT with "Currently marked on leave in Workday"; NEW TRAP: recipe functions default STOPPED — callers fail WRF00409 until wt recipes start; approval/refuse-list verified no-change; UAT remaining: live LoA approve by awaiting tester + approved-LoA case for typed type/dates lines)**; **BSYS-26816 view_total_compensation BUILT in dev 2026-10-10 (recipe 82959479, tool 254985 on End-User MCP vua_required=true; SOAP Include_Compensation probe CONFIRMED amounts incl. Stock_Plan_Data equity — no RaaS needed; code_input datapill + End-user-connection personalization traps in file; real end-user scoping UAT pending)**; **BSYS-26810 update_my_contact_info BUILT in dev 2026-10-10 (recipe 82959472 + tool 254984 + audit table 158542; scope-probe gate FIRED: REST contact-change 403 S22 + SOAP contact-read not authorized under end-user token — build complete on SOAP fallback, write-path UAT blocked on Workday tenant grants, full evidence in Jira comment 1134839 + project file)**; **BSYS-27818 view_my_tax_document_elections BUILT in dev 2026-10-10 (recipe 82959476, Option-1 re-scope: delivery-elections viewer not document instances, Phase 2 = BSYS-29494 blocked on RaaS authoring; catch-block placement + UI-only test-case-creation traps in file; live test + MCP wiring pending shared-browser contention)**; **BTSUP-76729 STALE FTO KB DOC FIXED 2026-10-10 (stale doc 242843660 deleted + re-ingested fresh via utility 82959474; root cause = collector 71498060 trigger silently missed page updates; new KB freshness sentinel 82959482 wired to publisher, verified both directions; Enterprise-context connector replaces deprecated Store knowledge — KB date-mangle + adhoc-output + index-lag laws in playbook/project file)**; **BTSUP-76729 PROD STILL STALE 2026-10-11 (read-verified: prod KB kb-AYcm4ggH-L9o6zm-CD doc 242843660 "Flexible Time Off" = 1,003-byte 2026-04-03 snapshot, never refreshed; dev fix NOT promoted, sentinel is dev-only — customers still hit the bug; drafts + findings in projects/hr-genie/btsup-drafts-2026-10-11.md)**; **BSYS-29455 guard case RE-RECORDED GREEN 2026-10-11 (orphaned mocks fixed + snippet-log strict-check law, workato-platform 2026-10-11 section); BSYS-29488 DONE-THRU-2026-10-10 (milestones 1134792+1134821+1134838): all 4 collectors repaired + flattened multi-page event drains landed w/ native round proof; scope-B coverage monitor 82959606 BUILT+verified (11 keyed coverage rows in 156843, DARK-detection live-proven on 82862205 pending-overlap hang — cancelled j-Abso3wzo, queue drained; sanitizer allowlist readback proof closed: registry 156841 complete + normalizer 82915212 fail-closed; scope-3 metrics recorded UNPUBLISHED per gates; UI-only dashboard KPI rebuild + hung-job-guard port staged as resume steps in project file); self-caught 100× under-collection (population-assertion law in agentic-platform-lessons); 140219 backfill COMPLETE (6,064 ledger events, correlator green, comment 1134882); PTO-Hub 61h retry explosion autopsied + BSYS-29495 BUILT (native FAILED_PERMANENT proof); dashboard audit done 2026-10-10: empty panes = UAT-gated notif evidence (all Oct-7 rows) + frozen 156862 Quality source (containment) + stale freshness KPI/coverage snapshot; pane fixes + BSYS-29499 Quality-dimension pipeline (5pts, Backlog) filed; Variables-in-loops + nested-repeat laws in playbook); FY27 Year-End/Leapsome: PLANNED + PHASE 0 PROBED 2026-10-08 (conn 19006083 = PROD Leapsome, admin token 

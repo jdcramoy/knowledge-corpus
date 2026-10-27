@@ -96,3 +96,10 @@ never say what a capability was WORTH. The value side is now instrumented:
 - [The Workato KB: RAG++ over all documentation, and the dreaming team](../../kb-corpus/confluence/extbt/2938929237-the-workato-kb-rag-over-all-documentation-and-the-dreaming-team.md)
 - [Operational Monitoring](../../kb-corpus/confluence/extbt/2940272642-operational-monitoring.md)
 <!-- kb-bridges:end -->
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Measure-learn-apply loop](domains/measure-learn-apply.md) — the weld contract: measure (ledgers) → learn (dreamer/gardener/evidence/governor) → apply (instruction-patch, routing proposals, canonize-failure, rehearsal); loop-closure rules with teeth (2026-10-09); **cost/quality governor LIVE 2026-10-09: cost-governor.py (daily class×model posterior table, budget alarms, proposals-only) + roi-report.py (monthly KILL/PROMOTE/KEEP per capability), fleet job `cost-governor`**; **+ VALUE ledger LIVE 2026-10-09: value-ledger.py (derive idempotent from triage/proposal/build-ledger/jira-runs; build rows keyed per TICKET not per mutation; human `note` rows for what ledgers can't see) + value-report.py (monthly value-vs-cost, imports roi-report's mapping) — fleet job `value-ledger` 23:50 derive / 1st of month report; 53 rows / 132h returned month-to-date**

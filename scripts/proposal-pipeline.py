@@ -72,9 +72,18 @@ def latest_dream_inventions():
         body = open(f, errors="replace").read()
     except OSError:
         return os.path.basename(f), 0, None, "none"
-    m = re.search(r"^## Inventions.*?$(.*?)(?=^## |\Z)", body, re.MULTILINE | re.DOTALL)
+    # dreamer writes either "## Inventions" or "## Proposal queue" (adjudicated 2026-10-13)
+    m = re.search(r"^## (?:Inventions|Proposal queue).*?$(.*?)(?=^## |\Z)", body, re.MULTILINE | re.DOTALL)
     if m:
+        # count BOTH formats the dreamer uses: numbered items and queue tables
         n = len(re.findall(r"^\d+\.\s+\*\*", m.group(1), re.MULTILINE))
+        for l in m.group(1).splitlines():
+            t = l.strip()
+            if not t.startswith("|"):
+                continue
+            if set(t) <= set("|-: ") or t.startswith("| id"):
+                continue  # separator or header row
+            n += 1
         return os.path.basename(f), n, f, "section"
     # No Inventions section: count invention-kind proposals filed the same day.
     n = 0
@@ -98,6 +107,8 @@ def collect():
         fm = parse_frontmatter(p) or {}
         title = re.sub(r"^\d{4}-\d{2}-\d{2}-", "", os.path.basename(p)[:-3]).replace("-", " ")
         status = (fm.get("status") or "proposed").lower()
+        if status == "proposal":  # dreamers file with 'proposal'; queue key is 'proposed'
+            status = "proposed"
         # outcome log wins if it has a newer ruling for this proposal
         oc = outcome_by_proposal.get(title.lower())
         if oc and oc.get("action", "").lower() in ("accepted", "rejected", "built"):
@@ -132,20 +143,15 @@ def digest():
     # only a miss when nothing was filed on the dream's date either.
     if dream_name == "none":
         gate = "file-gate: no dream report yet"
+    elif inv_basis == "section":
+        # section exists (list or table format) — the dreamer filed properly
+        gate = f"file-gate: latest dream ({dream_name}) has {n_inv} queue item(s)"
     elif n_inv:
-        if inv_basis == "proposals":
-            gate = (f"file-gate: latest dream ({dream_name}) has no Inventions section; "
-                    f"{n_inv} invention-kind proposal(s) filed that day")
-        else:
-            gate = f"file-gate: latest dream ({dream_name}) has {n_inv} inventions"
+        gate = (f"file-gate: latest dream ({dream_name}) has no Inventions/Proposal queue section; "
+                f"{n_inv} invention-kind proposal(s) filed that day")
     else:
-        filed = [i for i in items if i["date"] == dream_name[:10]]
-        if filed:
-            gate = (f"file-gate: latest dream ({dream_name}) has no Inventions section; "
-                    f"{len(filed)} proposal(s) filed on that date")
-        else:
-            gate = (f"file-gate: latest dream ({dream_name}) has no Inventions section "
-                    f"and no proposals filed that day")
+        gate = (f"file-gate: latest dream ({dream_name}) has no Inventions/Proposal queue section "
+                f"and no proposals filed that day")
     lines.append(f"PROPOSAL PIPELINE — {len(items)} filed · {len(proposed)} proposed · "
                  f"{len(incubating)} incubating · {len(accepted)} accepted-not-built · "
                  f"{len(built)} built · {len(rejected)} rejected")

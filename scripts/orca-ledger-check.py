@@ -32,6 +32,7 @@ HOME = os.path.expanduser("~")
 PROJECTS = os.path.join(HOME, ".claude", "projects")
 SKILL = os.path.join(HOME, ".claude", "skills", "orca-browser", "SKILL.md")
 OUT_DIR = os.path.join(HOME, ".claude", "knowledge", "dreams", "data")
+ADJ_LOG = os.path.join(OUT_DIR, "orca-ledger-adjudications.jsonl")
 
 # Transcript text signatures of browser-failure work. Deliberately concrete —
 # each traces to a real diagnosed failure on this harness.
@@ -48,6 +49,37 @@ SIGNATURES = [
 RESULT_KEYS = ("toolUseResult", "tool_result")
 
 LEDGER_ROW = re.compile(r"^\|\s*(\d{4}-\d{2}-\d{2})\s*\|", re.M)
+
+
+def parse_ts(ts):
+    """Parse an ISO transcript timestamp into an AWARE datetime, or None.
+
+    Clock-discipline guard (dreamer proposal 2026-10-10, part b): naive
+    timestamps are treated as LOCAL and converted, and Z/offset timestamps
+    are honored, so every comparison downstream is aware-vs-aware. A writer
+    that posts local time as UTC (~8h future) used to poison day buckets —
+    the read side now normalizes before trusting a date.
+    """
+    if not ts:
+        return None
+    try:
+        text = str(ts).strip()
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        parsed = dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.astimezone()  # naive = local, made aware
+    return parsed
+
+
+def local_day(ts):
+    """Local calendar day (ISO) for a transcript timestamp, or None."""
+    parsed = parse_ts(ts)
+    if parsed is None:
+        return None
+    return parsed.astimezone().date().isoformat()
 
 
 def ledger_dates(path):
@@ -84,6 +116,11 @@ def scan_file(path, max_bytes):
             # failure observation.
             if "Hard-won rules" in line or "orca-ledger-check" in line:
                 continue
+            # dream-report text and skill-text quotes re-enter transcripts as
+            # tool results; they re-trigger the same signatures night after
+            # night (self-pollution, adjudicated 2026-10-17) — never live days.
+            if "knowledge/dreams/" in line or "knowledge/skills/orca-browser" in line:
+                continue
             if not ('"toolUseResult"' in line or '"tool_result"' in line):
                 continue
             if not any(s.search(line) for s in SIGNATURES):
@@ -93,7 +130,9 @@ def scan_file(path, max_bytes):
             try:
                 entry = json.loads(line)
                 ts = entry.get("timestamp", "")
-                date = ts[:10] if ts else None
+                # Aware parse + local-day bucket: a UTC string or a naive
+                # local string both land on the writer's true calendar day.
+                date = local_day(ts)
                 snippet = json.dumps(entry)[:600]
             except ValueError:
                 snippet = line[:300]
@@ -109,7 +148,18 @@ def main():
     ap.add_argument("--max-file-mb", type=int, default=30)
     ap.add_argument("--strict", action="store_true")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--adjudicate", metavar="DAY",
+                    help="record a CLEAN verdict for DAY (YYYY-MM-DD) and exit")
     args = ap.parse_args()
+
+    if args.adjudicate:
+        os.makedirs(OUT_DIR, exist_ok=True)
+        row = {"day": args.adjudicate, "verdict": "CLEAN", "by": "dreamer",
+               "ts": dt.datetime.now(dt.timezone.utc).isoformat()}
+        with open(ADJ_LOG, "a") as f:
+            f.write(json.dumps(row) + "\n")
+        print(f"adjudicated CLEAN: {args.adjudicate} -> {ADJ_LOG}")
+        return
 
     if args.selftest:
         print("SELFTEST: signature table + ledger parser")
@@ -118,18 +168,49 @@ def main():
         assert row and row.group(1) == "2026-10-10", "ledger parser broke"
         hit = SIGNATURES[0].search("... browser_no_tab error ...")
         assert hit, "signature table broke"
-        print("SELFTEST OK: parser + signatures behave")
+        # clock-discipline selftest (proposal 2026-10-10, part b)
+        aware = parse_ts("2026-10-09T23:00:00Z")
+        assert aware is not None and aware.tzinfo is not None, "Z ts must parse aware"
+        naive = parse_ts("2026-10-09T23:00:00")
+        assert naive is not None and naive.tzinfo is not None, "naive ts must get local tz"
+        expected_day = dt.datetime(2026, 10, 9, 23, 0,
+                                   tzinfo=dt.timezone.utc).astimezone().date().isoformat()
+        assert local_day("2026-10-09T23:00:00Z") == expected_day, \
+            "local_day must bucket by the local calendar day"
+        assert parse_ts("garbage") is None and parse_ts("") is None, "bad ts must be None"
+        print("SELFTEST OK: parser + signatures + tz guard behave")
         return
 
     covered = ledger_dates(SKILL)
-    ledger_birth = min(covered) if covered else today
+    # adjudicated-CLEAN days (dreamer verdicts) are resolved — a MISSING verdict
+    # for one is a phantom re-flag of settled history
+    adjudicated = set()
+    if os.path.exists(ADJ_LOG):
+        with open(ADJ_LOG, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if str(row.get("verdict", "")).upper() == "CLEAN" and row.get("day"):
+                    adjudicated.add(row["day"])
     today = dt.date.today().isoformat()
+    ledger_birth = min(covered) if covered else today
     days_hits = {}
     scanned = 0
     for path in iter_transcripts(args.days):
         scanned += 1
         for date, sig, snippet in scan_file(path, args.max_file_mb * 1024 * 1024):
             days_hits.setdefault(date, []).append({"sig": sig, "file": os.path.basename(path), "snippet": snippet})
+
+    # Read-side clock-discipline guard (dreamer proposal 2026-10-10, part b):
+    # a failure day after TODAY is a writer-clock bug, not an unlogged day.
+    # Drop it with a stderr warning so the check can never again file a
+    # MISSING verdict for a day that has not happened (the 2026-10-11
+    # "MISSING" phantom row).
+    for future_day in [d for d in days_hits if d > today and d != "unknown"]:
+        sys.stderr.write(f"future-dated row dropped: {future_day}\n")
+        del days_hits[future_day]
 
     verdicts = {}
     for date in sorted(days_hits, reverse=True):
@@ -140,7 +221,8 @@ def main():
         else:
             verdicts[date] = "MISSING"
 
-    missing = [d for d, v in verdicts.items() if v == "MISSING"]
+    missing = [d for d, v in verdicts.items()
+               if v == "MISSING" and d not in adjudicated]
     pre_ledger = [d for d, v in verdicts.items() if v == "PRE_LEDGER"]
     report = {
         "date": today,

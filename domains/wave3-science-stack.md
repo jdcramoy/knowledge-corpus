@@ -86,3 +86,10 @@ reviews/wave3-dissenter-2026-10-11.md; amendments: reviews/wave3-amendments-2026
 - κ enforcement above 30 labeled joints + fusion claims carrying N_eff weight.
 - L1/L2 trigger levels (cheap-model + full dreamer on L0 survivors).
 - Ratchet recombination passes — needs a clause→oracle registry that doesn't exist.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Wave-3 science stack](domains/wave3-science-stack.md) — ALL 11 BUILT + LIVE-VERIFIED 2026-10-11 same session (dissenter: 10 MATERIAL amendments applied, cryptic-variation-bank clean; 4-builder swarm, zero collisions): null-miner (DREAMER PATTERNS SIT WITHIN THE PERMUTATION NULL — confabulation class real + now measurable), fdt-gate (retro-verdict was console-only, audit-corrected), fusion-policy (same-family ban + sha256 prompt_sha fix — builtin hash() was process-randomized = pre-wave3 rows unjoinable; --label-outcome CLI), trigger.py L0 (prescale menu, count-floor min-bias, novel stream), coincidence.py (cadence-aware, union-find shared-upstream collapse, watchdog interval MEASURED 113.1min), patch-genome+ratchet-watch, elites.py MAP-Elites (P(accept) banned, 168 cells), affinity-mature instruments (15/15 claims prose), pleiotropy (141 items → 103 josh-gate), rg-coarsen dry-run bank, spore-router SHADOW (spore row no-op FIXED post-audit: hasattr-on-nothing + tilde-path wrote into literal ~ dir); fleet com.josh.fleet.wave3-nightly 05:07 (+Sun passes) first fire was MANUAL; DEFERRED Josh-gated: rg apply-mode, spore ε+objective, wave-4 maturation loop, κ enforcement, L1/L2, ratchet recombination

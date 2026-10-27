@@ -31,3 +31,10 @@ Updated plan posted 2026-10-11 (Jira comment 1134965): last mile only, points 2 
 - `wt fixture` (~/.claude/knowledge/fixtures/<recipe>.json) is the browser-free verification harness: kinds webhook/api/force-run, --expect assertions, catches the new job and asserts its output.
 - Data-table picklists: `table_id` accepts the numeric id directly; record fields materialize as `parameters.<hash_underscored>` only after table_id is set.
 - Orca browser session was heavily contested during this build (stale tab redirects, "Session expired", eval reading wrong tab) — UI-only steps were deferred to handoff rather than fought; time-box browser work and prefer `wt` paths first.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - projects/bsys-25528-vibe-app-registry.md — BSYS-25528 BUILT in dev 2026-10-10 (registry + snapshots tables, Register App API recipe + collection/endpoint, Monthly Snapshot recipe 82959477 running, Search Apps skill skl-AbsoK8JA-XFHMkA-CD attach-ready for MCP server 5953; snapshot verified live j-AbsoJ3pk-XxFTHB-CD; remaining: UI endpoint activation + MCP attach + BT EA baseline import; Workflow Apps NOT on AHQ|AI plan — API-recipe registration is the fallback)

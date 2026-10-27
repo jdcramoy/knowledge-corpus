@@ -60,52 +60,92 @@ members fails via API → Josh UI import).
 - Test-probe recipe creation via the API failed; the working alternative was dogfooding the tool
   under test to build its own fixture (replace op supports heading/table/list_item blocks).
 
+## ⚠️ GOTCHA (Josh-confirmed, 2026-10-17): STOPPED RECIPE = TOOL DISAPPEARS FROM THE MCP SERVER
+
+- The MCP gateway serves a tool ONLY while its backing recipe is RUNNING. Stopping a twin recipe
+  for any reason (Test-dialog flows, hot-swaps, maintenance) silently REMOVES that tool from the
+  served tools/list — clients see a shrunken tool set with NO error anywhere.
+- This caused a 90-minute false diagnosis (2026-10-16→17): three write tools "missing" → theories
+  about broken bindings, stale registries, ACL quarantine — all wrong. The recipes were simply
+  stopped (by me, for the Test-dialog flow) and never restarted.
+- **RULE: if an MCP tool is missing from a served list, FIRST check `running` on its backing
+  recipe (`wt recipes get <id>`), before any binding/server theory. And ALWAYS restart any recipe
+  you stopped, same turn.**
+- Restarting changes nothing else — the served tool set comes back as soon as the recipe runs.
+
+## BSYS-29727 (2026-10-15): hyperlink fix BUILT in dev, UAT pending
+
+- [colleague] asked Claude to insert a doc link at first mention of a feature; the MCP fell back to
+  asking him to do it manually. Root cause: the generator emitted NO `updateTextStyle`/`link` —
+  `insertText` is plain-text only. Ticket: https://workato.atlassian.net/browse/BSYS-29727 (3pts).
+- **Fix (2026-10-15, dev twin 70572944 in folder 29891061):** ops `link_text` / `unlink_text` —
+  substring+occurrence matching (occurrence 1 = first mention), emits `updateTextStyle` with
+  `textStyle.link.url` + `fields: "link"`; unlink = fields "link" with link unset (verified against
+  the official format-text guide). UTF-16 code-unit conversion for astral chars; http(s)-only URL
+  guard; updateTextStyle shifts no indices so batch ordering is unaffected. Trigger description now
+  documents link ops. 20/20 local unit tests (build/BSYS-29727/test_link_ops.rb in the repo).
+- ⚠️ The REAL dev twin is **70572944** (folder 29891061, project "MCP | BT Managed MCP") — it
+  carried the BSYS-29692 fixes as of 2026-10-15 02:36 even though the BSYS-29692 closeout named
+  twins 83074320/83074561/83074563/83074564, which are now DELETED (404). Folder 35833467 (project
+  "Google Docs by Workato MCP") is an EMPTY newer folder — don't rebuild twins there. A duplicate
+  twin (83110574) was accidentally cloned from PROD code into it this session and deleted.
+- Raw `POST /api/recipes` with `{name, description, code: <json-string>, config: <json-string>,
+  folder_id: "<string>"}` WORKED this time (the "500s, not battle-tested" note is stale — the
+  stringified config+folder_id shape is the battle test).
+- Manifest 365931 (3 rows: agentic_skill 68138 + recipe 70572944 + connection 19022500), verified.
+- **Red-team (independent agent): round-1 FAIL → delta PASS-WITH-NOTES** (2026-10-15, verdict file
+  redteam/BSYS-29727-google-docs-mcp-link-ops.md). Round 1 caught: (1) trigger
+  `parameters_schema_json` missing link fields — would have broken the feature on promotion (the
+  schema, not just the description, is the calling agent's contract); (2) downcase-based
+  case-insensitive matching misaligns offsets when chars expand on downcase (İ U+0130) — fixed with
+  regex scan over the original string. Both fixed, delta-verified against a fresh live pull.
+  LESSON: when adding ops to a genie tool recipe, update parameters_schema_json too, not just the
+  description.
+- **Follow-up (2026-10-16, same ticket): heading-style loss + unrepairable next to tables** (Jon
+  Dart). Root causes: (1) replace on a heading block with typeless content degraded it to
+  NORMAL_TEXT — fixed with `preserve_block_types!` (content blocks without "type" inherit the
+  target's named style; string keys "level" — symbol keys silently no-op through process_heading's
+  dig); (2) the only repair path was replace (index-shifting, feared next to tables) — fixed with
+  an index-neutral `apply_style` op (updateParagraphStyle namedStyleType only, http(s)-style guard
+  on values, range excludes trailing newline). Suite 34/34. PUT-4 verified. NOTE: para_element
+  mocks MUST use UTF-16 endIndex (char-based mocks mask off-by-emoji bugs).
+- **LIVE UAT PASSED (2026-10-17) — all via the gdocs-dev MCP gateway, zero test-dialog clicks**
+  (the dialog path is retired; tools/call is the test surface). Doc 1p8TdLvO-TF1BhjnzdUAI3pgJQgmoNmcOrgqImeos9v4
+  (created via MCP create_document — MCP VUA identity, self-consistent account). Verified live:
+  link_text occurrence 1/2 + case-insensitive + İ-offsets + whole-block (trailing newline
+  excluded), unlink, apply_style heading repair AFTER a table, replace typeless-content heading
+  preservation (empty-string type — MCP schema forces type present, so "" = inherit), delete_row
+  (Richy done-row) + last-row guard + batch atomicity. Visual: doc screenshot (linked second
+  mention, unlinked first, one-row table, repaired heading in outline). Suite 36/36. Unit-test
+  mocks must use UTF-16 endIndex.
+- Minor open item: tab_id "" errors instead of defaulting to primary tab (hint promises default);
+  workaround = pass t.0. Fix candidate.
+- Leftover zombie: MCP server mcps-AbzMMJbD-M3Q-CD ("BSYS-29727 UAT") + 2 DCR OAuth clients
+  (oaoPY3jj, gos3JdWt) from the auth experiments — UI-delete candidates, no tokens issued.
+- **PROD HOTFIXED (2026-10-17, Josh: "just hotfix it"):** prod 70572893 v5→v6 via stop→PUT→start
+  (10s window), read-back verified (8/8 code checks). Post-deploy smoke PASSED through the PROD
+  gateway (5492.apim.mcp.workato.com, workato_idp OAuth — flow: DCR → authorize → consent →
+  **"Complete connection" button** (the missing redirect hop — click it!) → token): 11 tools,
+  served schema has link_url/occurrence/style, live create+link+apply_style on prod doc
+  1cfKIQJFP514_PtThmtmCAAZn4nHS8mV0pnPUxzlIl78, job j-AbzMxxMC-mxNzpt-CD green. DR record: BSYS-29765.
+- Open cosmetic: prod-served tool DESCRIPTION snapshot is stale (795 chars, no link ops) — served
+  inputSchema is correct so calls work; refresh via the Edit-description dialog per tool.
+- Zombie cleanup candidates: uat MCP server mcps-AbzMMJbD-M3Q-CD (dev), 3 DCR OAuth clients
+  (oaoPY3jj/gos3JdWt/TmBh1JDp), dev UAT docs 1ZAHpHJw + 1p8TdLvO, prod smoke doc 1cfKIQJF.
+- BROWSER LESSONS (2026-10-16 UAT session): the Test-recipe caret works ~once per session-state
+  then dies to ALL input channels (refs, OS mouse, keyboard) — after a page RELOAD the first
+  interaction usually works again. Workato enforces ONE workspace per session cookie: a second tab
+  in another workspace flips the session and "Session expired — switched workspaces" popups
+  ping-pong; fix = close extra tabs, click Reload, verify env switcher (env can ALSO flip to
+  Production — red banner, 404s all dev assets; switch back via the top-left dropdown, items are
+  button.app-menu-item needing the full pointerdown/mousedown/pointerup/mouseup/click dispatch).
+  Raw-JSON view of the Test dialog is display-only (Angular model never syncs — "can't be blank" on
+  submit even with valid JSON): fill the FORM view; short single-line orca type works (≤~100
+  chars), ≥700-char type calls die with runtime_unavailable.
+
 ## Open state (closeout 2026-10-14)
 
 - Live end-to-end UAT run pending — blocked on Josh SSO in Orca browser (test doc prepped:
   https://docs.google.com/document/d/1OQM8nEUmTngbyTEuCxtln59sG9Axfnj5dXoyeoLjpr0/edit,
   fixture at ~/.claude/knowledge/fixtures/83074320.json). Then deployment-request for promotion.
 - Promotion manifest (dev, id 364020): 4 recipes — 83074320, 83074561, 83074563, 83074564.
-
-
-## CORRECTIONS (Josh, 2026-10-15 — after I flailed through the wrong surfaces)
-
-- **Enterprise MCP servers live in the "MCP | BT Managed MCP" project** (prod folder 27436344:
-  https://app.workato.com/recipes?fid=27436344#assets). They are NOT created from the Enterprise MCP
-  UI section, NOT from a project Create menu, and AIRO `mcp_server_create` wants a folder_id in that
-  managed project — "Invalid Folder" from AIRO means wrong folder, not an ACL problem.
-- **Recipe → skill conversion IS an API call:** `POST /api/agentic/skills` with `{"recipe_id": <id>}`
-  returns the `skl-*` handle (this is what UI "convert to skill" does). No UI needed.
-- **Test-automation API is run/list ONLY** (POST /api/test_cases/run_requests,
-  GET /api/test_cases/run_requests/:id, GET /api/recipes/:id/test_cases). There is NO create-test-case
-  API — `POST /api/recipes/:id/test_cases` 404s (verified). First test case for a recipe = UI.
-- **`wt recipes force-run` is scheduler-trigger-only** and the trigger type check follows the recipe's
-  stored trigger; raw-PUT trigger swaps are IGNORED (platform keeps workato_genie). Do not attempt
-  trigger-swap workarounds to fake an invocation.
-- **The folders dev-API returns a BARE ARRAY** (not {items: []}) — my "no dev Managed MCP folder"
-  conclusion came from a broken one-page parse. Paginate and parse defensively.
-- Lesson Josh enforced: before ANY browser/UI automation for something that might be an API surface,
-  CHECK THE KB + grep the API index first. The KB exists so sessions don't re-derive platform facts
-  by trial and error.
-
-
-## FINAL CORRECTION (Josh, 2026-10-15 — the dev twins existed all along)
-
-- **Dev twins of all 11 MCP tools DO exist: recipes 70572934–70572944** in dev folder 29891061
-  ("Google Docs by Workato MCP", project 18274956) — one id off the prod series (705728xx).
-  My "no dev twin exists" conclusion was WRONG (name-search across an incompletely parsed folder list).
-- **The DEV Enterprise MCP server is `mcps-AYEBCFWr-3FB-CD`** (https://4319.apim.mcp.workato.com,
-  auth workato_idp, published:false) with tools bound flow_id → 70572934..70572944, vua_required true.
-  Dev "MCP | BT Managed MCP" folder = 27328084. Reading tools: in-page
-  `GET /web_api/mcp/servers/<handle>/tools.json` (session cookies).
-- **The fix is applied to the REAL twins** (70572944 main; 70572935 create_document;
-  70572940 list_mentions; 70572941 list_suggestions) — recipe must be STOPPED for PUT
-  ("can't modify running recipe"), restart after. Verified live in stored code.
-- My imported duplicates (83074320, 83074561/563/564) are superseded — deleted; living manifest
-  now carries the real ids. Duplicate-dev-twin creation was wasted motion caused by the wrong
-  "no twin" conclusion — ALWAYS check the MCP server's own tools.json flow_ids first.
-- Rule Josh enforced twice this session: check the KB before UI improvisation; MCP servers live in
-  the MCP | BT Managed MCP home (dev folder 27328084 / prod 27436344).
-- Live verification still pending: needs one MCP-tool invocation of update_document_content against
-  the test doc (Workato IDP auth on 4319.apim blocks headless session calls; any connected MCP client
-  — or Josh's manual Test run — completes it).

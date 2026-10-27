@@ -59,3 +59,10 @@ fire is 2026-10-08 00:37.
 - [The agents: a nervous system of specialists](../../kb-corpus/confluence/extbt/2938961981-the-agents-a-nervous-system-of-specialists.md)
 - [The Workato KB: RAG++ over all documentation, and the dreaming team](../../kb-corpus/confluence/extbt/2938929237-the-workato-kb-rag-over-all-documentation-and-the-dreaming-team.md)
 <!-- kb-bridges:end -->
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Project Dreamer](domains/project-dreamer.md) — 7th agent, LIVE 2026-10-07: nightly 00:37 architecture dreamer for PROJECTS (sibling of harness-dreamer) — mines project session history + knowledge/projects memory + repo docs + git, dreams architecture improvements / new features / better solutions; advisory-only constitutional (never edits repos), dissenter-gated proposals to the shared queue (kind: architecture|feature|vision, cap 3/night); launchd com.josh.fleet.project-dreamer, Sunday deep pass; drift-gate LIVE (scripts/drift-gate.py, kb venv: claims vs ground-truth corpus alignment, trend in garden-reports/drift-gate.jsonl — gardener Phase 2.5); **gym+canary LIVE 2026-10-09: replay-gym.py nightly 01:07 (ledger replay + invariants, fire drill Sundays via drill-row flip in 82934150 — REST code PUTs are a dead end: silent rejection/stale runtime/data stripping), command-canary.py daily 06:05 (row->watcher->bot-ack E2E proof, 31s)**

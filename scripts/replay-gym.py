@@ -21,6 +21,8 @@ import json
 import re
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from atomic_io import atomic_append
 
@@ -142,6 +144,32 @@ def wt(args, timeout=90):
     return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
+def direct_recipe_get(rid, profile):
+    """Transport-independent second read (the two-tool bar — see cortex/
+    investigations/gym-unreadable-1009-batch-verify.md): raw HTTPS to
+    /api/recipes/<id> with the profile's keychain token, bypassing wt's
+    socket handling (the known wt rc=1 transport class — canary-alarm-loop).
+    Returns the HTTP status code, or None on a transport-shaped failure."""
+    try:
+        cfg = json.loads((Path.home() / ".workato/profiles").read_text())
+        p = cfg["profiles"].get(profile) or cfg["profiles"][cfg["current_profile"]]
+        tok = subprocess.run(
+            ["security", "find-generic-password", "-s", "workato-platform-cli",
+             "-a", profile, "-w"],
+            capture_output=True, text=True, check=True).stdout.strip()
+        req = urllib.request.Request(
+            f"{p['region_url'].rstrip('/')}/api/recipes/{rid}",
+            headers={"Authorization": f"Bearer {tok}",
+                     "User-Agent": "replay-gym/1.0 (second-tool retry)",
+                     "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return resp.status
+    except urllib.error.HTTPError as e:
+        return e.code
+    except Exception:
+        return None
+
+
 def heartbeat(job, extra=None):
     row = {"ts": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "job": job}
@@ -201,7 +229,20 @@ def replay_pass(findings):
 
     # 1. asset liveness — the ledger spans BOTH workspaces: prod recipes
     # (readable only via --profile josh-prod) read as 404 on dev.
+    # Run-level abort gate (2026-10-26, sweep rec #1 after the THIRD identical
+    # all-false batch): if the FIRST 3 recipe reads all end fully-unreadable
+    # (wt rc=1 both profiles + direct API read fails), this is a machine-level
+    # transport failure — a network-down window or locked keychain in the
+    # headless launchd context fails every path at once. 100%-miss = machine
+    # failure, never N simultaneous recipe defects. Abort the run, write NO
+    # canon rows. Secondary gate: per-probe wall-clock ~= the 60s timeout is
+    # transport-shaped and is never canonized either.
+    reads = 0
+    initial_fails = 0
+    transport_invalidated = False
     for rid in recipe_ids:
+        reads += 1
+        t0 = time.monotonic()
         rc, out = wt(["recipes", "get", str(rid), "--raw"])
         profile = "dev"
         if rc != 0:
@@ -210,10 +251,28 @@ def replay_pass(findings):
         if rc != 0:
             if "404" in out or "Not found" in out:
                 findings.append(f"info: recipe {rid} deleted since yesterday (404 both profiles)")
+                initial_fails = 0  # a clean 404 proves the transport is UP
             else:
-                findings.append(f"asset-liveness: recipe {rid} unreadable on BOTH profiles (rc={rc}) — auth/schema problem?")
-                canon_add(f"gym-recipe-unreadable-{rid}", rid, "harness-regression",
-                          f"replay gym: recipe {rid} unreadable on dev AND prod (non-404)")
+                # Two-tool bar: a non-404 wt failure is transport-shaped until a
+                # second read path answers — canonize only if the direct API
+                # read also fails (None), not on a lone wt rc=1 blip.
+                direct = direct_recipe_get(rid, "josh-us")
+                if direct is None:
+                    direct = direct_recipe_get(rid, "josh-prod")
+                if direct is None:
+                    elapsed = time.monotonic() - t0
+                    if reads <= 3:
+                        initial_fails += 1
+                        if initial_fails >= 3:
+                            transport_invalidated = True
+                            findings.append(
+                                "gym invalidated: transport failure — first 3 recipe reads "
+                                f"all fully-unreadable (~{elapsed:.0f}s last probe). No canon rows written.")
+                            break
+                    findings.append(f"asset-liveness: recipe {rid} unreadable on BOTH profiles (rc={rc}, {elapsed:.0f}s) — NOT canonized (transport-shaped)")
+                else:
+                    findings.append(f"info: recipe {rid} wt-unreadable (rc={rc}) but direct API read returned HTTP {direct} — transport blip, not canonized")
+                    initial_fails = 0  # transport demonstrably up
         else:
             try:
                 running = json.loads(out).get("running")
@@ -236,7 +295,8 @@ def replay_pass(findings):
     else:
         findings.append("canary-stale: command loop canary has never run")
 
-    return {"ledger_rows": len(rows), "recipe_ids": recipe_ids}
+    return {"ledger_rows": len(rows), "recipe_ids": recipe_ids,
+            "transport_invalidated": transport_invalidated}
 
 
 def main():
@@ -258,7 +318,12 @@ def main():
         f"- ledger rows in window: {stats['ledger_rows']}; recipes checked: {len(stats['recipe_ids'])}\n"
         f"- misses: {len(misses)}\n\n"
         + "\n".join(f"- {f}" for f in findings) + "\n")
-    heartbeat("replay-gym", {"misses": len(misses), "firedrill": args.firedrill})
+    heartbeat("replay-gym", {"misses": len(misses), "firedrill": args.firedrill,
+                             "transport_invalidated": stats.get("transport_invalidated", False)})
+    if stats.get("transport_invalidated"):
+        # Abort gate fired: the run is machine-invalidated. Canonize NOTHING.
+        print("gym INVALIDATED: transport failure — run aborted, no canon rows written")
+        return
     for f in misses:
         if "replay-miss" in f or "invariant-miss" in f or "canary-fail" in f:
             canon_add("gym-" + re.sub(r"[^a-z0-9]+", "-", f.lower())[:50], None,

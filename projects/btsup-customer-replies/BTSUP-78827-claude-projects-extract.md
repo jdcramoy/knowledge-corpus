@@ -90,6 +90,24 @@ Process lesson filed: search knowledge + memory BEFORE triaging
   where = bare `{column: value}` (operator wrappers 400), and it 429s above
   ~3 rps — 2 threads with backoff held.
 
+## Crosscheck (2026-10-16) — PASS
+
+Two independent derivations of Dan Kennedy's tree, both on the current
+snapshot generation (`org-j-Abz6XHaz-33MYKw-CD`, materialized 12:36Z):
+
+- Closure-table descendants of employee 348: 320 people.
+- Fresh BFS over the search table's `Manager Employee ID` links: 320 people.
+- Set diff: zero delta in both directions, and zero change vs the generation
+  the original 153-row CSV was cut on. The shipped CS CSV is confirmed
+  correct as-is.
+
+Snapshot-generation note for the org-chart project: both tables carry TWO
+generations (current + previous, 1,550 employees / 12,488 closure rows
+each); a 4h refresh replaces the older one, and generation version strings
+change per cycle — never hardcode a version string across sessions, always
+pin by max materialization timestamp. (The original pull's version
+`org-j-AbxXT3BF-ge4dzp-CD` was purged overnight.)
+
 Still open: the claude.ai URL column. The Compliance API returns the tagged
 `claude_proj_…` id only; the claude.ai URL format uses a UUID the API does
 not expose. Flagged in the customer reply rather than promised — if links

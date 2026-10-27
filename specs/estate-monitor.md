@@ -199,3 +199,19 @@ Assemble during the build per promotion-orchestrator/manifest-hygiene: a running
 2. **Ledger retention**: Signal Ledger grows unboundedly. Recommend: v1 no deletes; v2 30-day rolling purge recipe. Confirm retention target.
 3. **Digest time**: recommend daily 08:00 local per scope channel. Confirm.
 4. **HR Genie seeding**: knowledge shows multiple dev projects (15643451 primary, others exist). Recommend seeding 15643451 only at launch. Confirm.
+
+## Revision
+
+- **2026-10-20 — test-noise window shipped consumer-side (harness layer), accepted proposal
+  `dreams/proposals/2026-10-12-typed-sweep-findings.md` (reduced, dissenter-survived form).**
+  The `test_noise_window` column could NOT be added to `EM | Monitor Scope` (158779)
+  programmatically: `data_table_update`'s `columns` param replaces the full schema and nulls
+  every cell on a populated table (playbook non-negotiable #1; column adds to populated tables
+  are UI-only). Live table untouched. Routing instead lives in the harness consumer:
+  `workato-health-scope-flags.json` (flag map, expiry-mandatory, 82862205 flagged to
+  2026-10-27) is honored by `workato-health.py` — flagged recipes' new-failures findings route
+  to `workato-health/digest/<day>.jsonl` instead of the triage queue + recipe-health bus page;
+  `harness-health.py` renders a 7-day test-noise digest nightly. If/when the UI column add
+  happens, migrate the flag map into scope rows and switch the consumer to read them; until
+  then the JSON file is authoritative. Verified live 2026-10-20: real sweep routed 82862205's
+  genuine new failure to digest with no bus finding, unflagged 82272892 unchanged.

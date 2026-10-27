@@ -1,0 +1,80 @@
+flowchart TD
+%% GSlides MCP — Level 2 asset graph (Workato assets + links; every node cites its source)
+%% SOURCES: kf = ~/.claude/knowledge/projects/google-slides-mcp.md (L = line number);
+%% live = wt api GET /api/recipes?folder_id=<id>, dev workspace, 2026-10-16 (folder 32269258 returned
+%% exactly 62 recipes; helper 82864228, sync 82864023, Frontify 82928714 confirmed present + running).
+%% GENERATED from live helper IDs per accepted proposal amendment — the topology IDs below were
+%% live-read, not hand-copied. Prod twins are kf-cited only (dev API cannot see prod workspace).
+%% REPRESENTED: full MCP surface per proposal (62 tool fleet, guidance helper, Confluence syncs,
+%%   Frontify refresh, telemetry tables, nightly compiler, MCP servers, EC knowledge bases).
+%% OMITTED (drawn as ONE node per env by design): the 62 individual tool recipes. Individual
+%%   tool nodes are level-3 detail; the canonical per-tool shape is kf L254-259 and the
+%%   wiring sweep (orca/projects/google-slides/scripts/sweep_wiring.py) is the per-tool check.
+%%   Extract recipe 78677477 (kf L310) and adapter/connection rows (kf L309, L312-313) also
+%%   undrawn; they are build-time plumbing, not runtime surface.
+
+  subgraph DEVD["Dev environment — project 13683566 (kf L308-310; live)"]
+    direction TB
+    TOOLSN["🔁 REC x62 | GSlides MCP tool fleet (dev)<br/>folder 32269258 · canonical shape per tool: validate → acquire → claim → connector call → release → guidance helper → return<br/><i>src: kf L310, L317-318, L254-259; live 2026-10-16 (62 recipes)</i>"]
+    HELPERD["⚙ FUNC | GSlidesMCP | Append Guidance 82864228<br/>recipe FUNCTION · Automation folder 32268816 · RUNNING<br/><i>src: kf L33, L401, L88-141; live 2026-10-16</i>"]
+    SYNCD["🔁 REC | GSlidesMCP | Sync Guidance from Confluence 82864023<br/>layout-aware parser (110 shards) · RUNNING<br/><i>src: kf L26, L438, L973; live 2026-10-16</i>"]
+    FRONT["🔁 REC | Refresh design tokens from Frontify 82928714<br/>Scheduler 24h · folder 32268816 · RUNNING<br/><i>src: kf L805-809; live 2026-10-16</i>"]
+    TELEMD[("🗄 GSlides MCP | Release Telemetry (dev)<br/>data table 157628<br/><i>src: kf L193</i>")]
+    KBD[("📚 EC knowledge base kb-AbpdgTcf-wFhJMw-CD<br/>canonical tokens + 110 layout shards<br/><i>src: kf L412, L973</i>")]
+    MCPSD["🔌 MCP server mcps-Ab9w3HK9-CRK-CD<br/>endpoint https://16704.apim.mcp.workato.com/<br/><i>src: kf L308-309</i>"]
+  end
+
+  subgraph PRODD["Prod environment — project 13755171 (kf L311-314)"]
+    direction TB
+    TOOLSP["🔁 REC x62 | GSlides MCP tool fleet (prod)<br/>promoted wiring swept clean<br/><i>src: kf L532, L534</i>"]
+    HELPERP["⚙ FUNC | Append Guidance (prod) 82872520<br/>folder 32312724 · fail-open telemetry write<br/><i>src: kf L56-58, L123-125, L225, L533</i>"]
+    SYNCP["🔁 REC | Sync Guidance from Confluence (prod) 82873160<br/><i>src: kf L56-58, L533-534</i>"]
+    TELEMP[("🗄 Release Telemetry (prod)<br/>data table 157744 · dev-cloned schema<br/><i>src: kf L222-225, L275-279</i>")]
+    KBP[("📚 EC knowledge base (prod) kb-AbrL4okJ-8spRP8-CD<br/><i>src: kf L533-534</i>")]
+    MCPSP["🔌 MCP server mcps-AbEdNLHX-43z-CD<br/>endpoint https://17498.apim.mcp.workato.com<br/><i>src: kf L311-312</i>"]
+  end
+
+  AGENTS["🏢 Calling agents (Claude sessions, Genies)<br/><i>src: kf L317-318 (contract)</i>"]
+  CONF["🌐 Confluence guidance pages<br/>+ Per-layout guidance page 2940994020 (110 published layout docs)<br/><i>src: kf L266-268</i>"]
+  FRONTIFY["🌐 Frontify brand system<br/>canonical palette<br/><i>src: kf L763, L913</i>"]
+  COMP["🧞 Compiler agent (nightly)<br/>reads telemetry → applies accepted proposals to Confluence guidance<br/><i>src: kf L260-265</i>"]
+
+  AGENTS -- "MCP tool calls" --> MCPSD
+  AGENTS -- "MCP tool calls" --> MCPSP
+  MCPSD -- "serves" --> TOOLSN
+  MCPSP -- "serves" --> TOOLSP
+  TOOLSN -- "guidance call_recipe" --> HELPERD
+  TOOLSP -- "guidance call_recipe" --> HELPERP
+  HELPERD -- "read 1: KB" --> KBD
+  HELPERP -- "reads" --> KBP
+  HELPERD -- "fail-open write" --> TELEMD
+  HELPERP -- "fail-open write" --> TELEMP
+  CONF -- "guidance sections" --> SYNCD
+  CONF -- "guidance sections" --> SYNCP
+  SYNCD -- "writes tokens + shards" --> KBD
+  SYNCP -- "writes" --> KBP
+  FRONTIFY -- "canonical palette" --> FRONT
+  FRONT -- "regen colors region" --> CONF
+  TELEMD -- "nightly read" --> COMP
+  TELEMP -- "nightly read" --> COMP
+  COMP -- "applies proposals" --> CONF
+
+  classDef rec fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+  classDef func fill:#ccfbf1,stroke:#0d9488,color:#134e4a
+  classDef table fill:#fef9c3,stroke:#ca8a04,color:#713f12
+  classDef kb fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef api fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+  classDef ext fill:#f8fafc,stroke:#64748b,color:#0f172a
+  classDef agent fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,stroke-dasharray:6 3,color:#3b0764
+  class TOOLSN,TOOLSP,SYNCD,SYNCP,FRONT rec
+  class HELPERD,HELPERP func
+  class TELEMD,TELEMP table
+  class KBD,KBP kb
+  class MCPSD,MCPSP api
+  class CONF,FRONTIFY ext
+  class AGENTS,COMP agent
+  class DEVD fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px
+  class PRODD fill:#fff7ed,stroke:#f97316,stroke-width:1.5px
+
+%% --- change log (max 10, newest first) ---
+%% 2026-10-16 initial asset graph created per accepted proposal gslides-arch-diagram (steel-manned twice); topology GENERATED from live wt api folder reads 2026-10-16 (62 recipes in 32269258; 82864228/82864023/82928714 running) + kf line cites; prod twins kf-cited only. %%

@@ -47,3 +47,48 @@
 {"ts": "2026-10-14T06:47:41-0400", "model": "baseten/kimi-k3", "prompt_sha": "2cc5209680ac0492", "wall_s": 135.18, "prompt_tokens": 1163, "completion_tokens": 13280}
 {"ts": "2026-10-14T06:49:12-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "2cc5209680ac0492", "wall_s": 90.84, "prompt_tokens": 1105, "completion_tokens": 7689}
 {"ts": "2026-10-14T06:50:47-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "2cc5209680ac0492", "wall_s": 95.09, "prompt_tokens": 1091, "completion_tokens": 11760}
+{"ts": "2026-10-16T23:53:02-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "23a803436d95a2f0", "error": "empty content: model's reasoning consumed --max-tokens before answering (thinking models need headroom) \u2014 rerun with a higher cap", "reasoning_len": 78603, "wall_s": 134.35}
+{"ts": "2026-10-16T23:53:48-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "23a803436d95a2f0", "wall_s": 46.3, "prompt_tokens": 803, "completion_tokens": 4079}
+{"ts": "2026-10-16T23:58:49-0400", "model": "fireworks/kimi-k3", "prompt_sha": "23a803436d95a2f0", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-17T20:00:32-0400", "model": "fireworks/kimi-k3", "prompt_sha": "ff632e2591e05b38", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-17T20:02:23-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "ff632e2591e05b38", "wall_s": 111.46, "prompt_tokens": 1809, "completion_tokens": 10654}
+{"ts": "2026-10-17T20:05:19-0400", "model": "baseten/kimi-k3", "prompt_sha": "ff632e2591e05b38", "wall_s": 175.05, "prompt_tokens": 1877, "completion_tokens": 14202}
+{"ts": "2026-10-17T20:10:48-0400", "model": "fireworks/kimi-k3", "prompt_sha": "ff632e2591e05b38", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-17T20:12:51-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "ff632e2591e05b38", "wall_s": 122.92, "prompt_tokens": 1809, "completion_tokens": 14087}
+{"ts": "2026-10-17T20:14:49-0400", "model": "baseten/kimi-k3", "prompt_sha": "ff632e2591e05b38", "wall_s": 117.67, "prompt_tokens": 1877, "completion_tokens": 11648}
+{"ts": "2026-10-18T02:46:35-0400", "model": "baseten/kimi-k3", "prompt_sha": "b59a7be32bc66cb7", "wall_s": 82.81, "prompt_tokens": 1493, "completion_tokens": 10782}
+{"ts": "2026-10-18T02:46:59-0400", "model": "fireworks/kimi-k3", "prompt_sha": "d95626d5c6618cf8", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-18T02:47:40-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "b59a7be32bc66cb7", "wall_s": 65.74, "prompt_tokens": 1423, "completion_tokens": 8777}
+{"ts": "2026-10-18T02:47:40-0400", "model": "fireworks/deepseek-v4-pro", "prompt_sha": "b59a7be32bc66cb7", "error": "HTTP 400: {\"status_code\":400,\"error\":{\"message\":\"model mapping not found: deepseek-v4-pro\"},\"extra_fields\":{\"provider\":\"\",\"model_requested\":\"\",\"request_type\":\"\"}}\n"}
+{"ts": "2026-10-18T02:48:15-0400", "model": "baseten/kimi-k3", "prompt_sha": "d95626d5c6618cf8", "wall_s": 76.28, "prompt_tokens": 955, "completion_tokens": 12000}
+{"ts": "2026-10-18T02:48:45-0400", "model": "baseten/kimi-k3", "prompt_sha": "adec1bcc8126bbfd", "wall_s": 35.02, "prompt_tokens": 461, "completion_tokens": 4549}
+{"ts": "2026-10-18T02:49:28-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "d95626d5c6618cf8", "error": "empty content: model's reasoning consumed --max-tokens before answering (thinking models need headroom) \u2014 rerun with a higher cap", "reasoning_len": 46529, "wall_s": 72.98}
+{"ts": "2026-10-18T02:50:15-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "adec1bcc8126bbfd", "wall_s": 89.7, "prompt_tokens": 386, "completion_tokens": 7259}
+{"ts": "2026-10-18T02:50:15-0400", "model": "fireworks/deepseek-v4-pro", "prompt_sha": "adec1bcc8126bbfd", "error": "HTTP 400: {\"status_code\":400,\"error\":{\"message\":\"model mapping not found: deepseek-v4-pro\"},\"extra_fields\":{\"provider\":\"\",\"model_requested\":\"\",\"request_type\":\"\"}}\n"}
+{"ts": "2026-10-18T02:54:42-0400", "model": "fireworks/kimi-k3", "prompt_sha": "d95626d5c6618cf8", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-18T02:55:55-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "d95626d5c6618cf8", "wall_s": 73.59, "prompt_tokens": 892, "completion_tokens": 11839}
+{"ts": "2026-10-18T02:58:37-0400", "model": "baseten/kimi-k3", "prompt_sha": "d95626d5c6618cf8", "wall_s": 119.56, "prompt_tokens": 955, "completion_tokens": 16591}
+{"ts": "2026-10-18T02:59:41-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "d95626d5c6618cf8", "wall_s": 64.01, "prompt_tokens": 894, "completion_tokens": 6457}
+{"ts": "2026-10-18T03:20:24-0400", "model": "baseten/kimi-k3", "prompt_sha": "d84a7073b73d2e09", "wall_s": 53.65, "prompt_tokens": 1130, "completion_tokens": 6941}
+{"ts": "2026-10-18T03:21:44-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "d84a7073b73d2e09", "wall_s": 80.3, "prompt_tokens": 1058, "completion_tokens": 6411}
+{"ts": "2026-10-18T10:57:09-0400", "model": "fireworks/kimi-k3", "prompt_sha": "c3cb190532108017", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-18T10:58:00-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "c3cb190532108017", "wall_s": 51.35, "prompt_tokens": 5554, "completion_tokens": 5364}
+{"ts": "2026-10-18T10:59:32-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "c3cb190532108017", "error": "empty content: model's reasoning consumed --max-tokens before answering (thinking models need headroom) \u2014 rerun with a higher cap", "reasoning_len": 50942, "wall_s": 91.75}
+{"ts": "2026-10-18T11:04:45-0400", "model": "fireworks/kimi-k3", "prompt_sha": "c3cb190532108017", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-18T11:06:29-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "c3cb190532108017", "wall_s": 104.29, "prompt_tokens": 5545, "completion_tokens": 13903}
+{"ts": "2026-10-20T01:31:02-0400", "model": "fireworks/kimi-k3", "prompt_sha": "1cbce70a34242066", "wall_s": 72.42, "prompt_tokens": 1738, "completion_tokens": 2048}
+{"ts": "2026-10-20T01:31:28-0400", "model": "baseten/kimi-k3", "prompt_sha": "1cbce70a34242066", "error": "empty content: model's reasoning consumed --max-tokens before answering (thinking models need headroom) \u2014 rerun with a higher cap", "reasoning_len": 9318, "wall_s": 26.61}
+{"ts": "2026-10-20T01:31:46-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "1cbce70a34242066", "error": "empty content: model's reasoning consumed --max-tokens before answering (thinking models need headroom) \u2014 rerun with a higher cap", "reasoning_len": 9334, "wall_s": 18.13}
+{"ts": "2026-10-20T01:37:01-0400", "model": "fireworks/kimi-k3", "prompt_sha": "1cbce70a34242066", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-20T01:39:12-0400", "model": "baseten/kimi-k3", "prompt_sha": "1cbce70a34242066", "wall_s": 130.45, "prompt_tokens": 1735, "completion_tokens": 10401}
+{"ts": "2026-10-20T01:40:52-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "1cbce70a34242066", "wall_s": 100.37, "prompt_tokens": 1657, "completion_tokens": 11149}
+{"ts": "2026-10-20T02:18:29-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "a6e665acdd3503de", "wall_s": 36.27, "prompt_tokens": 595, "completion_tokens": 4281}
+{"ts": "2026-10-20T02:18:45-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "a6e665acdd3503de", "wall_s": 16.47, "prompt_tokens": 600, "completion_tokens": 2319}
+{"ts": "2026-10-20T15:36:37-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "a9206c6a2dd9e676", "wall_s": 221.38, "prompt_tokens": 687, "completion_tokens": 12039}
+{"ts": "2026-10-20T15:40:44-0400", "model": "fireworks/kimi-k3", "prompt_sha": "a9206c6a2dd9e676", "wall_s": 246.96, "prompt_tokens": 767, "completion_tokens": 9826}
+{"ts": "2026-10-20T15:41:09-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "a9206c6a2dd9e676", "wall_s": 25.19, "prompt_tokens": 703, "completion_tokens": 3428}
+{"ts": "2026-10-21T15:37:42-0400", "model": "fireworks/kimi-k3", "prompt_sha": "38ecb39b4a53d9a6", "error": "timeout: The read operation timed out"}
+{"ts": "2026-10-21T15:38:15-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "38ecb39b4a53d9a6", "wall_s": 32.53, "prompt_tokens": 947, "completion_tokens": 4175}
+{"ts": "2026-10-21T15:39:27-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "38ecb39b4a53d9a6", "wall_s": 72.57, "prompt_tokens": 950, "completion_tokens": 10183}
+{"ts": "2026-10-21T15:40:25-0400", "model": "fireworks/glm-5.3-flash", "prompt_sha": "51508ce7185ed275", "wall_s": 38.53, "prompt_tokens": 296, "completion_tokens": 6509}
+{"ts": "2026-10-21T15:40:53-0400", "model": "baseten/deepseek-v4-pro", "prompt_sha": "51508ce7185ed275", "wall_s": 27.82, "prompt_tokens": 293, "completion_tokens": 3647}

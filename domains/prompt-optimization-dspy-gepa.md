@@ -70,3 +70,10 @@ taming mechanism is the human. **Frontier shortlists, never decides.**
 - [Google Semantic MCP project](../projects/google-semantic-mcp.md) (PR-002, canary sweep, flywheel)
 - [Harness benchmarking](harness-benchmarking.md) + bench/harness-ab/
 - [Model gateway playbook](model-gateway-playbook.md) (judge-model cost experiments)
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Prompt optimization: DSPy + GEPA](domains/prompt-optimization-dspy-gepa.md) — BANKED 2026-10-13, parked (Josh: "nothing is itching yet"): verdicts per surface (harness loop NO — closed runtime + structural token tax; Genie skills plausible pilot; **GWS Semantic MCP strong fit OFFLINE ONLY — hot path stays zero-LLM; strongest target = PR-002's autonomous-promotion AI-judge prompt (canary sweep 82862814), never measured; + paraphrase generation + caller-side facts module**); Pareto-frontier as decision framework (shortlists, never decides); BI applying same concepts to Enterprise Data MCP semantic layer (external, convergence signal)

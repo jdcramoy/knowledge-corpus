@@ -1,10 +1,15 @@
 flowchart TD
     %%{init: {"flowchart": {"nodeSpacing": 30, "rankSpacing": 40}}}%%
     %% Estate Monitor — Level 2 asset graph (all Workato assets, dev project 18242571)
-    %% REPRESENTED: full set — 12 recipes, 6 data tables, 3 connections, project properties. Nothing omitted.
-    %% Edge truth: dependency tracker NOT run this pass. Every edge is sourced from
-    %% kf (~/.claude/knowledge/projects/estate-monitor.md) or ledger (orca repo docs/estate-monitor/BUILD_LEDGER.md).
-    %% Unsourced edges deliberately absent: e.g. no drawn edge for registrar → Asset Registry (not stated in either source).
+    %% REPRESENTED: full set — 15 recipes, 1 recipe function, 6 data tables, 4 connections,
+    %% 2 genies, 6 knowledge bases, project properties, 2 LOCAL launchd actors (this Mac). Nothing omitted.
+    %% Edge truth: dependency tracker RUN 2026-10-19 (nodes for 83019866 / 82993520 / 82997363
+    %% confirmed live; tracker carries no edge data). Every edge is sourced — src: tracker (tracker
+    %% node row), kf (~/.claude/knowledge/projects/estate-monitor.md), ledger (orca repo
+    %% docs/estate-monitor/BUILD_LEDGER.md), or live (wt/launchctl/AIRO read this pass, cited with date).
+    %% Unsourced edges deliberately absent: e.g. no drawn edge for registrar → Asset Registry (not stated in any source).
+    %% Genie→KB edges are attachment-level (AIRO genie_list: 7 KBs on triage genie, 6 on dissenter),
+    %% not per-KB — per-KB attachment lists are not exposed by any read used this pass.
 
     subgraph triggers["Trigger sources"]
         direction TB
@@ -12,6 +17,9 @@ flowchart TD
         trigSlack["Slack Events API<br/><i>reaction_added</i><br/><i>src: kf L101; ledger</i>"]
         trigSched["Schedulers 5 min<br/><i>src: ledger</i>"]
         trigDaily["Scheduler daily 03:00<br/><i>src: kf L24; ledger</i>"]
+        trigJira["Jira real-time trigger<br/><i>label send-to-triage · JQL<br/>project in (BSYS,BTSUP)</i><br/><i>src: kf L166; live wt recipes get 2026-10-19</i>"]
+        trigEpic["Scheduler daily 01:23<br/><i>src: kf L182</i>"]
+        trigHook["KB Sync webhook endpoint<br/><i>webhooks.workato.com/…/em_kb_sync</i><br/><i>src: kf L145, L314-316; live trigger app 2026-10-19</i>"]
     end
 
     subgraph captures["Capture layer"]
@@ -35,11 +43,36 @@ flowchart TD
         r82966988["EM | Evaluate Error Thresholds · 82966988<br/><i>windowed error-burst count → burst signal;<br/>audit row per scope per cycle</i><br/><i>src: ledger</i>"]
         r82966998["EM | Evaluate Service Health · 82966998<br/><i>staleness → degraded signal; resolves degraded /<br/>connection / missed-start incidents on live proof</i><br/><i>src: kf L49-51; ledger</i>"]
         r82967004["EM | Daily Ops Report · 82967004<br/><i>per-scope digest, quiet scopes skipped</i><br/><i>src: kf L24; ledger</i>"]
+        r83019866["EM | Monthly Epic Rotate · 83019866<br/><i>running · daily watchdog: current-epic state row<br/>vs latest epic-rotated audit row; overdue → Slack;<br/>rotation now EXECUTES in-platform (create → audit →<br/>close → announce; close goes LAST)</i><br/><i>src: kf L182, L186; tracker; live wt recipes get 2026-10-19</i>"]
     end
 
     subgraph reaction["Reaction-to-ticket"]
         direction TB
-        r82971161["EM | Capture Ticket Reaction · 82971161<br/><i>reaction_added → Correlation-ID lookup →<br/>idempotency gate → BSYS Bug (assignee =<br/>last editor) → thread reply</i><br/><i>src: kf L101-106, L121-122; ledger</i>"]
+        r82971161["EM | Capture Ticket Reaction · 82971161<br/><i>reaction_added → Correlation-ID lookup →<br/>idempotency gate → BSYS Bug (assignee =<br/>last editor) → thread reply; 🤖 branch → triage<br/>pipeline (handler v2); epic parent from state row</i><br/><i>src: kf L101-106, L121-122, L145, L182; ledger</i>"]
+    end
+
+    subgraph triage["Triage pipeline (phase 2.5+)"]
+        direction TB
+        r82997363["EM | Capture Triage Request · 82997363<br/><i>running · label send-to-triage → correlation →<br/>|triaged| gate → genie pipeline → label swap<br/>triaged-by-genie; access-gate flips limited<br/>verdicts to triage-access-limited; fail-open</i><br/><i>src: kf L164-166, L253; tracker; live 2026-10-19</i>"]
+        gTriage["Genie: EM | Recipe Triage<br/>gin-AbwEPzbk · anthropic · read-only triage<br/>verdict from live recipe reads (step-0<br/>access gate); recipe-backed skills<br/><i>src: kf L145, L246-253; live AIRO genie_list 2026-10-19</i>"]
+        gDissent["Genie: EM | Triage Dissenter<br/>gin-AbwKFbFE · openai · CONCUR/CONTEST<br/>re-verification, fabrication-risk marker<br/><i>src: kf L173-174, L250; live AIRO genie_list 2026-10-19</i>"]
+        r82993520["EM | KB Sync · 82993520<br/><i>webhook recipe (invoked by em_kb_sync.py +<br/>HTTP POST from the build-capture failure path<br/>83152798) → idempotent doc upsert by<br/>tree-relative doc ID; audit row per run</i><br/><i>src: kf L145, L314-316; tracker; live wt recipes get 2026-10-19</i>"]
+    end
+
+    subgraph kbs["Knowledge bases (Enterprise context, folder 35778608)"]
+        direction TB
+        kbP["EM KB | Platform Domains<br/>43777-43780 tier · kb-AbwEDBNg<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+        kbS["EM KB | Project Knowledge<br/>43777-43780 tier · kb-AbwEDC6t<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+        kbG["EM KB | Build Specs<br/>43777-43780 tier · kb-AbwEDCfs<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+        kbB["EM KB | Skill Gotcha Catalogs<br/>43777-43780 tier · kb-AbwEDDPL<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+        kbM["EM KB | Triage Memory<br/>kb-AbwJaW4J · one doc per triaged incident<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+        kbD["EM KB | Decisions & Policies<br/>kb-AbwJaTQK · regret ledger + standing rules<br/><i>src: kf L145; live AIRO kb list 2026-10-19</i>"]
+    end
+
+    subgraph local["Local harness actors (launchd, this Mac)"]
+        direction TB
+        lwWatcher["launchd: com.josh.estate-monitor.triage-watcher<br/><i>60s poll of Ops Audit Log via wt dt query →<br/>headless claude -p jira-autotriage dispatch;<br/>lockfiles + watermark in ~/.local/state</i><br/><i>src: kf L145; live launchctl 2026-10-19 (loaded, exit 0)</i>"]
+        lwEpic["launchd: com.josh.estate-monitor.epic-rotate<br/><i>RETIRED 2026-10-14 — plist removed; script kept<br/>with retired header; rotation now in 83019866</i><br/><i>src: kf L186; live launchctl 2026-10-19 (absent)</i>"]
     end
 
     subgraph tables["Data tables (folder 35778609)"]
@@ -57,6 +90,7 @@ flowchart TD
         c22286384["EM | Estate Monitor Alerts Bot · 22286384<br/><i>Workbot · profile 46357</i><br/><i>src: kf L13-14, L89-90; ledger</i>"]
         c22286593["CON | Estate Monitor Events (Slack) · 22286593<br/><i>Slack connector · profile 46359</i><br/><i>src: kf L13-14, L105-106</i>"]
         c18479504["Jira · 18479504<br/><i>integrations.ai@workato.com</i><br/><i>src: ledger; kf L99</i>"]
+        c18702724["[COR] Jira | PRODUCTION · 18702724<br/><i>integrations.ai@workato.com · shared with the<br/>Cora project folder (EM manifests filter this dep)</i><br/><i>src: kf L166, L224-225; live wt connections list 2026-10-19</i>"]
     end
 
     props["Project properties · 18242571<br/><i>EM Error Burst Window/Count, Staleness,<br/>Handled Exception Window/Count — fallback<br/>chain: property → table row → default</i><br/><i>src: kf L40-43</i>"]
@@ -114,6 +148,29 @@ flowchart TD
     r82971161 -->|"idempotency + audit"| t158784
     r82971161 -->|"create BSYS Bug"| c18479504
     r82971161 -->|"🎫 thread reply"| c22286384
+    r82971161 -->|"triage memory doc"| kbM
+
+    trigJira -->|"send-to-triage"| r82997363
+    trigEpic --> r83019866
+    trigHook --> r82993520
+
+    r82997363 -->|"invoke verdict"| gTriage
+    gTriage -->|"review verdict"| gDissent
+    r82997363 -->|"triage + dissenter<br/>comment"| c18702724
+    r82997363 -->|"audit + |triaged| gate"| t158784
+    gTriage -.->|"KBs attached"| kbs
+    gDissent -.->|"KBs attached"| kbs
+
+    r82993520 --> kbP
+    r82993520 --> kbS
+    r82993520 --> kbG
+    r82993520 --> kbB
+
+    r83019866 -->|"state row"| t158784
+    r83019866 -->|"epic create + close"| c18702724
+    r83019866 -->|"overdue alert"| c22286384
+
+    lwWatcher -->|"poll audit rows"| t158784
 
     classDef recipe fill:#e8f0fe,stroke:#3367d6,stroke-width:2px
     classDef function fill:#ffe8cc,stroke:#e8702a,stroke-width:2px
@@ -122,11 +179,23 @@ flowchart TD
     classDef trigger fill:#fff4e0,stroke:#e8a33d
     classDef config fill:#f5f5f5,stroke:#757575,stroke-dasharray:4
 
-    class r82966983,r82966987,r82966989,r82967000,r82967001,r82966986,r82966985,r82966988,r82966998,r82967004,r82971161 recipe
+    class r82966983,r82966987,r82966989,r82967000,r82967001,r82966986,r82966985,r82966988,r82966998,r82967004,r82971161,r82997363,r82993520,r83019866 recipe
     class f82966879 function
     class t158779,t158780,t158781,t158782,t158783,t158784 table
-    class c22286384,c22286593,c18479504 connection
-    class trigOps,trigSlack,trigSched,trigDaily trigger
+    class c22286384,c22286593,c18479504,c18702724 connection
+    class trigOps,trigSlack,trigSched,trigDaily,trigJira,trigEpic,trigHook trigger
     class props config
+    class gTriage,gDissent genie
+    class kbP,kbS,kbG,kbB,kbM,kbD kb
+    class lwWatcher local
+    class lwEpic retired
+
+    classDef genie fill:#fce4ec,stroke:#ad1457,stroke-width:2px
+    classDef kb fill:#e0f7fa,stroke:#00838f
+    classDef local fill:#fffde7,stroke:#f9a825
+    classDef retired fill:#eeeeee,stroke:#9e9e9e,stroke-dasharray:4
 
     %% 2026-10-12 first handoff: created both levels fresh from kf + BUILD_LEDGER (tracker not run; edges kf/ledger-sourced) %%
+    %% 2026-10-19 phase 2.6a refresh (approved proposal 2026-10-14): tracker RUN this pass — added 3 recipes
+    %% (83019866, 82993520, 82997363), 2 genies, 6 KBs, Jira conn 18702724, LOCAL launchd layer
+    %% (triage-watcher live; epic-rotate retired 2026-10-14); all new edges src'd kf/tracker/live %%

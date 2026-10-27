@@ -89,3 +89,10 @@ uncovered classes** — all 8 correction classes already have counter-rules on
 the instruction surface. Proof: `coverage-2026-10-09.md` (each class quotes
 the exact counter-rule line found). The loop is live and will queue the first
 time a correction class fires that no rule covers yet.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Instruction-patch loop](instruction-patches/README.md) — corrections-to-instructions self-learning (2026-10-09, committed 8eb8039): instruction-miner.py (nightly, zero LLM — latest 2 dream reports + bus correction findings -> 8 keyword-clustered correction classes -> coverage check vs instruction surface -> UNCOVERED classes queued pending in instruction-patches/queue.jsonl, covered classes PROVEN with quoted counter-rules in coverage-<date>.md); instruction-patch.py applier (--approve/--apply gate, hard target allowlist, applied.jsonl audit); weekly Sunday path: gardener modularize/patch proposals -> dissenter review -> Josh approve; seed run 2026-10-09: 8/8 classes already covered (0 uncovered)

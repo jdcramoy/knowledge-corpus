@@ -1,0 +1,15 @@
+{
+  "found": "2026-10-26",
+  "source": "jira-triage fleet pass (assignee-scoped sweep, 91 open tickets)",
+  "defect": "Same-session creation-time dedupe failure: five ticket clusters were each filed 2-3x with byte-identical descriptions and no Duplicate cross-links on the shells",
+  "clusters": [
+    {"canonical": "BSYS-29986", "shells": ["BSYS-29984", "BSYS-29985"], "title": "Workato Estate Hygiene epic"},
+    {"canonical": "BSYS-29989", "shells": ["BSYS-29987", "BSYS-29988"], "title": "Retire 'My Workato genie slack connection NNN' series"},
+    {"canonical": "BSYS-29992", "shells": ["BSYS-29990", "BSYS-29991"], "title": "Deploy HR Genie FTO KB fix (BTSUP-76729)"},
+    {"canonical": "BSYS-29995", "shells": ["BSYS-29993", "BSYS-29994"], "title": "HR Genie KB freshness sweep v2"},
+    {"canonical": "BSYS-29982", "shells": [], "marked_duplicates": ["BSYS-29981", "BSYS-29983"], "title": "Prod Holiday Calendar Sync bug (already cross-linked on 29983)"},
+    {"canonical": "BSYS-29906", "shells": [], "note": "BSYS-29902 is an earlier worked instance of the same probe alert, both carry triage comments; consolidate to 29906", "title": "EM Recovery Probe 1 stop alert"}
+  ],
+  "evidence": "Descriptions compared byte-identical within clusters via REST GET /rest/api/3/issue/<key>?fields=description,comment on 2026-10-26; canonical picks = member carrying the triage/goal comments",
+  "proposed_cleanup": "Josh closes the 8 shells (29984, 29985, 29987, 29988, 29990, 29991, 29993, 29994) as duplicates; add Duplicate links first. 29902/29906 both worked; pick 29906 and link 29902."
+}

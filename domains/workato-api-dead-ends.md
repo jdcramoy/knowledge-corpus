@@ -33,6 +33,12 @@ endpoint. Append new dead ends at the bottom; date each line.
   wrong name → HTTP 400 FIELD_NOT_FOUND.
 - Jira comment with `commentVisibility` role Administrators → HTTP 400 when the service account
   isn't in that project role; post without visibility instead.
+- `GET /api/connections` returns a BARE JSON array (not `{"items": ...}`) and IGNORES
+  `per_page`/`page` — one call returns the whole catalog (965 rows, 2026-10-27). Parsers
+  expecting an envelope silently see only the first element if they scan for the first `{`.
+- `GET /api/recipes` DOES honor `per_page`/`page` AND accepts a server-side `folder_id`
+  filter (returns `{"items": [...], "count": N, "page": P}`; list items embed the full
+  `code` DSL + `config` connection bindings — no per-recipe fetch needed).
 
 ## AIRO MCP data-table row access (2026-10-13, BSYS-29656)
 - `data_table_query` on a data table: the query route is NOT deployed — returns `HTTP 404 {"message":"API not found"}` (tool suggests docs_get guides:workspace-query; doc doesn't help).

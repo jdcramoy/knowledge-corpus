@@ -47,3 +47,10 @@ archived recipe.
 **Takeaway for notification-surface builds:** any ADDITIONAL notification surface on top
 of existing ones needs an explicit "what does this REPLACE vs ADD" answer at spec time —
 this one shipped to UAT before the additive-vs-consolidating question was asked.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [PTO platform](projects/pto-platform.md) — BSYS-26808; specs + handoffs in ~/Documents/Claude/; **BA spike BSYS-27657: Spike 1 NO-GO (2026-10-10) — create_task rejects synthetic conversation context + internal-errors even on real IDs; conversational 71440065 permanent**; **Manager PTO Digest RETIRED 2026-10-11 (BSYS-27724 CLOSED Won-t Do, Josh decision): redundant with single per-request notifications + per_set re-digest on every arrival = noisy; gated on BSYS-27657 NO-GO; recipe 82959475 stopped + moved to dev Archive folder 31274124 + description marked RETIRED; REMOVED from promotion manifest 361068 + its deploy story BSYS-29498 (comment 1134911; desc screen-locked in Final Tech Review — comment carries the scope change + stale-package-42196483 supersession; never promoted, no prod copy); runtime lessons (AIRO condition-rhs quoting, f-string FROM-keyword parser, WorkatoMonitor stale-output trap, WQL cannot-resolve-instance classification) remain valid in pto-platform.md**

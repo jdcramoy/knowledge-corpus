@@ -93,3 +93,10 @@ The in-tree fix (atomic append CLI) exists, unused. QUEUED: wave1-atomic-io-adop
   by `git cat-file`, not by voting.
 - Auditor side effects are real: read-only charters still fired Slack canaries via
   --help. Audit charters should say "run NO script that can post/write externally".
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Harness fusion audit 2026-10-12](reviews/harness-audit-2026-10-12.md) — 3-model panel (fable/sonnet/haiku, identical charter) over all 3 waves + ops: ~41 scripts 33+/36 VERIFIED, 0 BROKEN/UNBUILT, headline numbers reproduce to the digit; **P0 heartbeat.jsonl REPLACED mid-day Oct 11 (1402 rows; manufactured 7-10 false "never" health findings; no shrink alarm fired; 1402 recovered from blob 25ba9d1 → 2005 rows; Oct10 23:33→wipe window lost in no commit; root cause = run-job.sh bare >> racing atomic_io replace)**; spore-row no-op caught x3 (fixed live, 2 layers); gossip-read _ts tz-strip (+4h on Z rows — likely registry future-dating root cause); jira-triage deployed prompt STALE (missing Josh Oct-10 voice correction, TIMEOUT drift — dual-copy drift 2nd recurrence); --help fires real jobs (2 real Slack canary posts during audit); wave-1 stack never adopted atomic_io; 7 findings QUEUED to triage (13 pts); store gate REFUSED the auditor's schema-less append (worked as designed)

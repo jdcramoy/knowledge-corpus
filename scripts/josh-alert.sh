@@ -10,8 +10,8 @@
 TITLE="${1:-Attention needed}"
 MSG="${2:-An agent needs your action}"
 afplay /System/Library/Sounds/Glass.aiff &
-TN="$(command -v terminal-notifier)"
-if [ -n "$TN" ]; then
+TN="/opt/homebrew/Cellar/terminal-notifier/3.1.0/terminal-notifier.app/Contents/MacOS/terminal-notifier"
+if [ -x "$TN" ]; then
   "$TN" -title "$TITLE" -subtitle "Orca browser agent" -message "$MSG" -sound Glass >/dev/null 2>&1
 else
   osascript -e "display notification \"$MSG\" with title \"$TITLE\" subtitle \"Orca browser agent\" sound name \"Glass\""

@@ -194,6 +194,15 @@ Verify first use: the audit log must show BYPASSED lines.
 - Recipe functions MUST be in "running" state to be callable
   (`Can't call a stopped recipe`, WRF00409) even though they have no
   trigger. Start FUNCs after creation, not just the calling RECs.
+- **Start-refusal ≠ stop (third state):** `recipes start` can fail with
+  `config_errors: [... "unconnected" ...]` when a step's connection has no
+  OAuth grant, while `recipes get` still reports `running: false` —
+  indistinguishable from a deliberate stop. Triage order: (1) running
+  flag, (2) if a start attempt returns config_errors, read the connection
+  id from the error and check connection state BEFORE any recipe-side
+  theory. Start-blocked recipes need the connection owner (OAuth =
+  identity work = Josh gate), not a restart loop. (Born 2026-10-23:
+  sweeper 83291436 restart refused on pilot Slack connection 22364458.)
 - `data_table_update(columns=...)` regenerates EVERY business-column
   field_id (system Record-ID field `11fbe9a6_…` stays stable). Recipes
   referencing old ids keep silent dead mappings — rewire all table steps
@@ -1229,6 +1238,10 @@ Automation error"). Root causes and fixes, both replay-relevant:
   (match_found=true), not just a green job.
 
 ## Connections CRUD wire format + CLI bug (2026-10-13)
+- UPDATE (2026-10-16, connector v53 id 474791): the token input is now **`user_token`
+  ("User token" label)**, NOT `api_token` — `input: {api_token: ...}` creates the connection
+  silently credential-less and the async test reports 401 Unauthorized. UI fill via Orca browser
+  works (real keystrokes into the password-type field). Old v-api_token note below may predate v53.
 
 - `wt connections create` crashes (`AttributeError: 'Namespace' object has no attribute 'data'`,
   line 1011-1013 pre-check) even with --data — bypass with raw `wt api POST /api/connections`.
@@ -2061,6 +2074,53 @@ HR Genie lesson (BSYS-29498): 11 recipes shipped, zero of the 4 functions +
   run_requests) → `wt testcases status --run-id cirr-...` → job trace via AIRO
   `job_get` (public jobs API omits step traces). A passed run's `last_run_result` on
   the case JSON carries `executed_assertions: [{status: succeeded}]`.
+- **CASE CREATE is browser-free too (2026-10-20, BSYS-29585 on 82272892) — the
+  "UI-only" belief is obsolete.** `POST /web_api/recipes/<id>/test_cases.json`
+  (in-page fetch, CSRF headers) scaffolds a BLANK case (`Untitled test case 1`,
+  payload IGNORED — this is also where the fleet's scaffold noise comes from);
+  then `PUT /web_api/recipes/<id>/test_cases/<caseId>.json` fills it. PUT
+  contract learned by probe: params are FLAT (`{name, description, mocks,
+  assertions}` — the `{test_case: {...}}` wrapper 422s "At least one parameter
+  has to be present"); each assertion REQUIRES a client-generated `id` (uuid4)
+  or the whole assertions array is SILENTLY DROPPED (200 + assertions_count 0);
+  snippet-step mocks wrap the mock output as `{output: {...}}` while
+  db-table/rest mocks stay bare. Build mocks from the CURRENT
+  `mockable_lines.json` (every step's `as` id + mockability), never from an
+  old case.
+- **Recipe edits rot case mocks in three stages (all seen 2026-10-20, same
+  recipe):** (1) orphaned mock identifier → job fails pre-execution
+  "Some steps with mocks or checks were deleted from the recipe" (trace-less,
+  ~0.15s, error_parts.error_type "Test Automation error"); (2) mock SHAPE
+  drift — v114's materialize_semantic_retrieval_index emits
+  `selection_partitions` which v109 mocks lack → the downstream plans snippet
+  raises `SELECTION_PARTITIONS_INVALID` (error_type "Eval custom ruby code
+  error" — the raise lives in RECIPE code, not the runner); (3) successor-step
+  drift — a mock dropped as "orphaned" must be re-pointed at the edited step's
+  NEW identifier, not deleted (missing upsert_record_529f mock → real
+  upsert → "required field not set: 'updated_at'"). Repair method: GET
+  case JSON, diff mock identifiers against fresh mockable_lines.json, PUT flat
+  envelope. Verify persistence by re-GET (PUTs can silently drop params).
+
+- **Test runs CANNOT hit ANY connector step live — "Missing connection" is swallowed by
+  try/catch and 0-assertion cases pass VACUOUSLY (2026-10-25, GSlides Layout Quality
+  Toolkit DR pass, 11 recipes).** In a test run, Google Slides connector steps (get_slide,
+  batch update, transform — even on a shared non-personalized connection) fail with
+  `Missing connection. Please establish connection manually` — same class as the WRF00400
+  warning. If the recipe wraps its body in try/catch (skill-tool standard), the error is
+  caught, the error-path release permit fires, and the job closes SUCCEEDED: a "happy
+  path" case with mocks only on trigger+functions and 0 assertions proves nothing.
+  Diagnosis: job trace shows the catch line with the error, try line `{'error': True}`.
+  Fix: MOCK the connector steps too, feeding recorded fixture shapes (real element arrays
+  captured via the mounted MCP Get_Slide/Get_Presentation; get_slide mock =
+  `{elements, slide_id, speaker_notes}`, get_presentation mock = `{slides, slide_count}`);
+  keep the custom-code (logic) steps REAL — they are the thing under test. To make a case
+  BITE, add a `data` assertion (`{id: uuid4, step_identifier, source:
+  {assertion_source_type: "step_output"}, operator: "equals", expectation: {output:
+  {...}}, type: "data"}`) pinning the custom-code step's exact output — snippet outputs
+  include the injected `log: ""` key, and dynamic fields (request_id, Time.now) must stay
+  out of the pinned step. Proof of a non-vacuous run: `executed_assertions:
+  [{status: "succeeded"}]` on the case's last_run_result, or a trace where the try line
+  reads `{'error': False}` and the happy terminal return executed.
 
 - **Quota-recovery residue (NEW, 2026-10-11, BSYS-28296):** after the
   Marketo daily-quota outage ends, the connection stays flagged
@@ -2189,34 +2249,251 @@ Skill-side (proposal 2026-10-13-em-build-lessons-skill-canon): these belong in a
   (TypeError: bytes) AFTER firing the request — read the import id from the
   traceback log (`grep -o '42229[0-9]*'`) and poll `wt-prod packages get`.
 
+## HR Genie / recipe-function ops (BSYS-29783, 2026-10-19)
 
-## Enterprise MCP servers — location + programmatic creation (2026-10-15, BSYS-29692)
+- **401-in-`call_recipe` diagnosis fast path:** check the CALLED connection's `connection_lost_at`/`connection_lost_reason` FIRST (`wt connections list <id>`). A connection that authed then died shows `authorization_status: success` (stale) while `connection_lost_reason` carries the real 401. Born: 96 silent HR Genie delivery failures Oct 12–18 from `Token invalid` on `CON | Workato API HR Genie`.
+- **Env-twin trap:** re-authing a connection in the WRONG workspace fixes nothing and shows zero symptoms in the target env — always re-GET the prod connection's `authorized_at` before declaring a reconnect done.
+- **Recipe-FUNCTION test cases can't run standalone:** Test Automation run on a `workato_recipe_function` recipe fails with `Test Automation error: Step can't be executed, it requires sample data` and a ZERO-line trace (`title: Processed event`) — that's a case-config error, not a recipe regression. Functions are proven via a real call site only.
+- **Live-firing a function's normal path without UI:** create a tiny TEST webhook probe recipe (manifest-exempt if TEST-named; state the exemption verbatim), trigger = `workato_webhooks`/`new_event` with `webhook_suffix`, code = the trigger NODE itself with `"block"` children (NOT a `{"as":"root"}` wrapper — start fails `unexpected line` at step 0), one `call_recipe` step, start via REST, POST to `webhook_url`, read the child job off the target's job list (`calling_recipe_id` = probe id). Stop the probe after proof.
+- **Empty catches in fleet functions:** the HR Genie pattern for observability inside a catch is `call_recipe_async` → `FUNC | HR Genie | Record Handled Error` (82120578) with static sanitized strings + `job_context` pills — async child failure never propagates into the catch, so the FAILED-return contract holds. Never put the raw catch message in the payload (it can carry user emails).
 
-- Enterprise MCP servers live as assets of the **"MCP | BT Managed MCP" project** (prod folder
-  27436344). Create them in that project's folder (dev equivalent when present) — NOT via the
-  Enterprise MCP UI section, NOT arbitrary folders. AIRO `mcp_server_create` errors "Invalid Folder"
-  when the folder isn't an allowed MCP home.
-- **Recipe → skill conversion via API:** `POST /api/agentic/skills {"recipe_id": N}` → returns
-  `skl-*` handle (provider_type Recipe). Then bind into an MCP server (tool entry:
-  `{trigger_application: "workato_skill", id: "skl-..."}`) or assign to a genie via
-  `POST /api/agentic/genies/:id/assign_skills {"skill_ids": [...]}`.
-- **Test Automation API = run/list only** (POST /api/test_cases/run_requests {recipe_id|test_case_ids|
-  folder_id|project_id|manifest_id}; GET run_requests/:id; GET /api/recipes/:id/test_cases). NO
-  create-test-case API — first test case per recipe is UI-only. `wt testcases run --recipe N` wraps run.
-- **On-demand runs:** `POST /api/recipes/:id/force_run` is scheduler-trigger-only (genie/skill triggers
-  refuse with 422). Raw-PUT trigger swaps are silently ignored — the platform keeps the stored trigger
-  type; never try to fake an invocation by swapping triggers.
-- Genie conversations via dev API are GET-only (no send-message endpoint) — genie invocation is via its
-  served chat/MCP surface, not raw REST.
-- The dev folders API (`GET /api/folders`) returns a BARE ARRAY — paginate with page/per_page and parse
-  defensively (a one-page {items:[]} assumption produced a wrong "folder doesn't exist" conclusion).
+## BSYS-29515 build lessons (2026-10-20)
 
-## Genie tool-recipe hotfix: Monitor wrapper + catch return on prod (2026-10-15, BSYS-29700, recipe 71124238)
-- **Adding error handling to a Genie skill recipe via AIRO:** `recipe_builder_add_step(type="error_handling")` creates a try/catch; MOVE existing steps in with `recipe_builder_move_steps(positions=[...], new_parent=<try step#>)`. The CATCH block is NOT a valid `parent` for add_step ("not a container") — to put a step in catch, push the structure with an empty catch, read the raw code (`wt api GET /api/recipes/<id>.json`), and raw-PUT the catch child in. Raw shape: try step keyword `"try"` contains monitored steps + a `"catch"` keyword step (input `{retry_interval, max_retry_count}`) whose own `block` holds handler steps.
-- **`workato_genie.workflow_return_result` is DEPRECATED in the AIRO action catalog** — recipe_builder_add_step refuses it. It still runs fine (existing steps keep working); add catch-return steps via raw PUT, not AIRO.
-- **"expression is unsafe" on start = formula sandbox rejection.** `rescue` modifiers/assignments in a data-field formula are banned. A rescue-based JSON.parse hardening of an interpolated body is NOT possible in a template/`=` formula — don't try; wrap the step in a Monitor instead and let the real 4xx become the signal.
-- **Raw code JSON nesting:** adhoc HTTP body lives at `step.input.input.data` (double-nested); `input.data` KeyError means you're one level short.
-- **wt `packages download` sends the bearer header on the S3 presigned URL → S3 400 "Only one auth mechanism allowed".** Workaround: `wt packages get <pkg-id> --raw` → `download_url` → plain `curl` (no auth header).
-- **API-token-created export manifests are INVISIBLE to the browser user** (in-page `/export_manifests/<id>.json` 404s, manifest absent from the list) even in the same workspace — mirrors the API-created-project ACL trap. But `wt manifests create` DOES persist rows (8 rows read back fine once viewed from the right env). The 2026-10-15 "empty manifest" incident was actually an ENV mismatch: the Orca tab had flipped back to Development, so the read-back 404'd and was misread as 0 rows. **Always assert `r.status`/`result` presence, not just `.assets.length`, and check the tab's env header before any in-page verification.**
-- **Dev twin of a prod Genie recipe may have DIVERGED silently**: dev 70911663 already had a `.gsub(/[[:cntrl:]]/, ' ')` hardening prod never got. Diff BOTH against each other before assuming parity.
-- **44%→ root cause class:** Genie-supplied JSON fragments (`form`, `requestFieldValues`) interpolated raw into an adhoc POST body fail with 400 "error parsing JSON" when user text carries unescaped quotes; 422 "Field is required" = Genie omitted required Proforma questions. The Monitor+catch-return pattern converts both into conversation-recoverable outcomes (job succeeds, Genie gets `{error: guidance}`).
+- **create_manifest.py verify vs Orca browser workspace**: the script's in-page read-back
+  (/export_manifests/<id>.json) 404s when the Orca browser session is signed into a DIFFERENT
+  workspace than the wt CLI profile — the manifest index in-browser won't show CLI-created
+  manifests either (maxid lag is the tell, not a cache). Control-test with a KNOWN-OLD manifest id
+  before concluding anything. Fallback verify path that PASSES the standing order: `wt manifests
+  update <id> --file payload` → `wt packages export <id>` → `wt packages get <export_op_id>` →
+  curl the download_url RAW (wt's own download sends an Authorization header to S3 alongside the
+  signed URL → S3 400 "Only one auth mechanism allowed"; plain curl works) → `unzip -l` proves
+  rows at ZIP level.
+- **Failed create_manifest.py runs can still have created the manifest**: the script dies in
+  verify AFTER `wt manifests create` returns the id — always `wt manifests get <id±few>` for a
+  stray duplicate before re-running, and delete your own just-created stray (kept 368187, deleted
+  stray 368185).
+- **AIRO connector module names that matter**: Scheduler trigger = `clock.scheduled_event`
+  (scheduled_event_v2 NOT found), data tables = `workato_db_table` (upsert_record,
+  get_records, update_record, add_record), Salesforce SOQL = `salesforce.search_sobjects_soql_v2`
+  (query WITHOUT LIMIT + `limit` field; LIMIT appears in the runtime query).
+- **Boolean + now() into data-table parameters**: pass `ruby("false", bindings={})` /
+  `ruby("now.utc", bindings={})` — plain `false` gets stored as string "false".
+- **Upsert-by-primary-key proven**: set table_id (numeric) + primary_field_id (column UUID) →
+  sticky parameter paths materialize; run 1 created=true, run 2 created=false, row UUIDs stable.
+- **Stale-flag idiom without ruby list algebra**: capture nothing — compare each row's
+  last_seen (set to now.utc on every upsert) against the trigger's scheduled_time in a plain
+  if/less_than; absent accounts keep yesterday's last_seen and get flagged is_stale=true.
+- **Push requires stopped recipe**: "can't modify running recipe" — stop → push → start in the
+  same turn; scheduler recipes run fine via `wt recipes force-run` while running (no need to stop
+  for tests, only for pushes).
+
+## MCP server token-auth clone — the vua_required chain (BSYS-29822, 2026-10-20)
+
+**JOSH CORRECTION (2026-10-20): the 29 recipe copies were NOT necessary — the
+same skills can bind to multiple MCP servers; a second server = new server +
+attach the SAME tools. Copies make the fleet impossible to maintain. Never
+clone a fleet to serve it from a second server; if a binding flag (vua_required)
+seems to force duplication, surface the tradeoff to Josh first.** The notes
+below document the vua mechanics (still true) but the copy pipeline was the
+wrong call.
+
+- Tool-binding `vua_required` is COMPUTED from the backing recipe's connection
+  `personalization` flag ("End user's connection"). Not writable anywhere:
+  PATCH tools/<id>.json 200s but ignores it; bulk PUT rejects; assign_tools and
+  the TF provider's assign carry no field. Only write surface = recipe-level
+  package export → edit (`config[n].personalization: false`) → import.
+- Bindings SNAPSHOT the flag at creation — flipping the recipe post-binding
+  does nothing until the binding is deleted and re-assigned.
+- `wt recipes copy` PRESERVES personalization; copies need the flip per copy.
+- Copied skill recipes are not valid `workato_skill` assign targets until
+  registered: convert via AIRO (`recipe_builder_pull` to seed the session, then
+  `convert_to_skill` WITHOUT recipe_id — direct convert with recipe_id on a
+  fresh session misparses the session as a recipe id). Conversion of a
+  recipe-copied skill CAN 500/502 transiently; retry once.
+- Workato RLM package zips carry paths relative to the manifest's SOURCE
+  folder; import expects them relative to the import target. Cross-folder
+  imports must patch every internal reference (agentic_skill recipe refs,
+  recipe→data-table refs) to full paths from zip root, else "Unresolved
+  reference" / duplicate-placement failures.
+- Fresh MCP server create-defaults to token-based access. Do NOT set
+  auth_type via the TF provider — its post-create auth UPDATE is rejected
+  ("Auth type is not included in the list") and rolls back the whole create.
+- Token-auth server serves ONLY tools whose binding vua_required=false;
+  all-VUA fleet ⇒ "tools not supported" (empty surface). Per-tool vua=true
+  tools are simply excluded from token clients (Jira API Token server runs
+  18 true + 4 false).
+- TF mcp_server `tools` is an ORDERED list — mismatched order = perpetual
+  "1 to change" drift, and an apply would recreate bindings and RESET
+  hand-PUT tool names (binding name is editable via PUT tools/<id>
+  {name, description} but NOT in TF schema — keep order aligned).
+
+## Slack drafts family — TOKEN-TYPE WALL (2026-10-20, BSYS-29820, definitive)
+
+- `drafts.create` accepts the VUA OAuth user token (live-proven); **`drafts.update`
+  and `drafts.delete` reject it** — `not_allowed_token_type` with create-identical
+  transport (form-encoded + is_from_composer) AND with the JSON-body shape. They
+  require Slack web-session tokens (xoxc/xoxd, "browser auth") — same wall the
+  native Slack MCP hits (slackapi/slack-skills-plugin#93). `drafts.list` also
+  rejects OAuth (`not_allowed_token_type`).
+- **Do NOT build update/delete draft skills on the VUA connection model** — they
+  are permanently-dead surfaces. The only unlock is a session-token connection
+  (Josh's browser tokens in a shared connection: expires, rotates, security-
+  sensitive — recommended against). A partial alternative: `chat.postMessage`
+  accepts `draft_id` (observed in karbassi's write capture) — a "send/flush
+  draft" skill may be possible with OAuth (unverified).
+- Wire shapes (for the future): `drafts.update` = JSON body, blocks/destinations/
+  file_ids as nested JSON strings, client_msg_id, NO is_from_composer;
+  `drafts.delete` = form-encoded, `client_last_updated_ts` padded to exactly 7
+  decimals (`frac.ljust(7,'0')`); `drafts.list` = POST, no params needed.
+- The `client_last_updated_ts` flows from the create/update response draft object
+  (`draft["last_updated_ts"]`) — state carries forward through the agent
+  conversation; no list call needed. create_message_draft (v62+) returns it.
+- Connector actions for update/delete remain in Slack (Custom) v64 — fail-closed
+  (`draft_api_unavailable`), unbound to any MCP tool.
+- Also: the "lists need border:1" and "lists rejected in drafts" claims from
+  2026-10-14 were BOTH compile-flap artifacts — lists work border-less everywhere
+  (posts and drafts). The border normalization was REMOVED in v56 (it would have
+  forced visible border boxes on caller lists).
+
+## ⛔ NO HARDCODED IDS IN RECIPE LOGIC (Josh standing directive 2026-10-21, BSYS-29498 FTR)
+Never hardcode recipe ids, folder ids, or env-specific ids in recipe code — not in URL strings, Ruby snippets, or properties-carrying-ids. Import remaps STRUCTURAL refs only, never string literals → silent prod breakage behind green jobs. Resolve dynamically: skills by `trigger_application == workato_skill` (recipes API listing carries it; server-side trigger filter does NOT exist), projects/folders by stable NAME (names identical across envs; fail-loud resolver), behavior by emission EVIDENCE (never code-string detection — the include?("recipe-id") detector class is dead). Paginated runtime listings get a fail-loud truncation guard (count PARSED items, never raw-string `"id"` occurrences — each recipe row carries many). API caps: recipes/folders per_page=100 (250 silently returns 100); /api/folders = direct children only (with_subfolders=true on /api/recipes DOES recurse); no DELETE /api/properties route. Promotion gate: scan the export ZIP for `folder_id=\d+` in URLs, bare 7-8-digit ids in Ruby strings, gin-/ginct-/mcps-/skl- handles — all must read CLEAN. Full incident: projects/hr-genie.md 2026-10-21 sections.
+
+## Command loop UPDATE (2026-10-22) — digest re-ingestion loop found + fixed
+
+- **Bug (Oct 8–22):** every fleet digest posted to the command room as the VUA was re-ingested
+  by the watcher as a Josh directive. Root cause chain: (1) VUA posts carry Josh's user id, so
+  author checks cannot tell fleet posts from Josh; (2) the only exclusion (slack-posts.jsonl
+  ledger) never fired — rows use key `channel`, watcher read `channel_id` (silent key mismatch);
+  (3) poll_room had no directive-grammar gate. Result: each digest spawned 1–2 duplicate headless
+  "Execute this directive" triage passes (cwd=/ transcripts under ~/.claude/projects/-/) and
+  double-acked "done: <digest>" from the bridge — the triple-post signature in the room.
+- **Fix (2026-10-22):** agent-command-watcher.py — ledger key fix (accept channel/channel_id +
+  message_ts/ts, verified against the day's digest ts) + is_directive grammar gate
+  (selfcheck/go/skip/plan/work, same contract as room-sweep.py) in poll_room. 9/9 grammar tests.
+- **Lesson:** any surface where the fleet posts AS Josh must never use author identity as its
+  only signal; pair the ledger exclusion with a command-grammar gate on the consumer side.
+
+## Collaborator groups + project grants (2026-10-23, BTSUP-78586, live-verified)
+
+- **Collaborator groups are ORG-LEVEL objects** shared across the dev/prod workspaces of one org
+  (`ug-...` IDs resolve from both). The "prod twin group" concept does NOT exist — create the group
+  ONCE; environment scoping happens at the PROJECT GRANT level. Group-name uniqueness is org-wide
+  (prod create of a name taken in dev 400s "Name has already been taken").
+- Reads: `wt api get /api/user_groups` (paginated 100/page; NO `q` filter — param silently ignored),
+  `wt api get /api/user_groups/<id>/project_grants`, `wt api get /api/project_roles` (system roles:
+  Project admin / Advanced builder / Builder / Project operator / Operator / Test Operator /
+  Project Read Only).
+- Grant CREATE has no Developer API route (`/api/user_groups/:id/project_grants` POST 404s; PUT with
+  grant payload returns 200 and changes NOTHING — verify by re-GET). The working write surface:
+  in-page fetch `POST /web_api/projects/<project_id>/add_project_grants.json` with CSRF
+  (XSRF-TOKEN-V2 cookie → X-CSRF-TOKEN) + X-Requested-With, body
+  `{"project_grants":[{"assignment_id":"<ug-id>","assignment_type":"UserGroup","project_role_id":"<prjrl-id>"}]}`.
+  Found by capturing the UI's own XHR (`orca network`), not by guessing. A guessed
+  `remove_project_grants.json` route 404s — no known API route for grant REMOVAL/role-change.
+- **Projects created via the Developer API get ACL "Everyone else: No access"** — they vanish from
+  the projects list for everyone until access control is set. Expected; grant the group via the
+  project's Access control tab (still reachable by direct `recipes?fid=<id>` URL).
+- **Environment switch via REAL KEYSTROKES when synthetic dispatch fails**: find-click the env
+  switcher, then `orca keypress ArrowDown` × n (verify `document.activeElement.textContent` per
+  step) + `Enter`. Full synthetic pointer sequences silently no-op on env menu items even with
+  clientX/Y. Browser session must BE in an environment for in-page fetches to hit it — project IDs
+  are env-scoped, a dev-session fetch of a prod project 404s.
+- Angular hotkeys overlay red herring: hidden `.cfp-hotkeys-container` (visibility:hidden,
+  z-index:-1024) makes `document.activeElement.innerText`/body-text reads START with "Keyboard
+  Shortcuts:×" — it is NOT intercepting clicks; don't chase it.
+- Role dropdowns on the Access-control page: synthetic AND real coordinate clicks on options do not
+  register (no XHR fired). Opening the dropdown works via dispatch on `.select__value`, but OPTION
+  selection doesn't take. Role edits = manual UI click or wait for a discovered update endpoint.
+- Workato session death: "Session ended because you switched workspaces in another tab" — Reload
+  button restores the session (click via snapshot ref); env resets to default.
+
+## AIRO recipe_builder: three build-time lessons from the nine-box skill (2026-10-23, builder-D, recipe 83296507)
+
+- **update_variables staleness extends BEYOND loops (BSYS-25527 follow-up, live-proven):** a
+  variable updated in a top-level `if`/`elsif` branch (not in any loop) still reads back as the
+  STALE initial value in later steps via the `declare_variable_N['value']` pill — first run of the
+  nine-box skill computed viewer_role='manager' in a branch and the downstream snippet + return
+  step read `''`. This is security-relevant when the variable carries an authz role (sharing gate
+  silently never fires). Fix: pass RAW ids into a Ruby snippet and derive the role inside it.
+- **Literal `""` on a REQUIRED result_schema field fails recipe START** ("can't be blank" per
+  field, start-validation code_errors) — the builder's MissingRequiredField advisory is real at
+  start. Workaround: map blank with `ruby("''", bindings={})`; empty static lists (`[]`) on
+  required array-of-object fields fail the same way — mark the field optional and omit it on
+  error-path return steps.
+- **Return-step list-of-objects mapping:** a set_input_field plaintext value of
+  `[{...: "f\"{item['x']}\""} for item in list]` stores the inner f-string as LITERAL TEXT
+  (renders `f"{...}"` in the payload). The inner value must be authored as the bare f-string form
+  (`[{"id": f"{item['x']}"} for item in ...]`) so it parses as an interpolation node.
+- **Test-case browser-free creation re-verified end-to-end** (POST scaffold → PUT flat envelope
+  with mocks → wt testcases run/status → AIRO job_get trace proof) on 83296507; snippets left
+  unmocked run REAL, which makes pure-logic snippets (config parsing, exact-match lookup, grid
+  rendering) directly testable under mocked connector steps. CSRF header + X-Requested-With as
+  documented 2026-10-11.
+
+## Skill-trigger schemas are ARRAYS of field objects, not JSON-Schema (builder-J, BSYS-29730, 2026-10-24, recipe 83326123)
+
+- **`parameters_schema_json` / `result_schema_json` / `code_output_schema_json` on a `workato_skill` trigger (and Ruby-snippet output schema) must be an ARRAY of field objects** (`[{"control_type":"text","label":"team","name":"team","type":"string","optional":false}, ...]`, arrays as `{"name":"x","type":"array","of":"string"}`). The JSON-Schema object form (`{"type":"object","properties":{...}}`) SILENTLY breaks AIRO's extended-schema retrieval — every `set_input_field` on the step then ends with `API error: TypeError: no implicit conversion of String into Integer`, the parameter pills never materialize, and every downstream pill reference shows `DatapillInvalidPath ... doesn't exist in output schema of 'start_workflow_xxxx'`. Symptom chain: trigger pills missing from `get_datapills` → filter values "invalid" though stored. Fix the schema FORMAT and the pills materialize instantly (runtime pill path: `start_workflow_1['parameters']['<name>']`).
+- **Data-table `get_records` filter `equals` (`eq`) is actually case-insensitive CONTAINS, not equality** (live-proven: Team eq "Executive Business" matched "Executive Business Partner"; `starts_with` "Customer" also returned contains-style rows). `starts_with` behaved as prefix. Consequence: any exact-match contract MUST be enforced downstream (verify returned rows with case-insensitive full-value equality in a snippet) — never trust the filter op for exactness.
+- **Skill-trigger test cases, browser-free end-to-end re-verified on a `workato_skill` recipe** (POST scaffold → PUT flat `{name, description, mocks, assertions}` → `wt testcases run --ids <caseId>` → AIRO `job_get` trace). Trigger mock: `{"step_identifier": "start_workflow_<uuid4>", "type": "stub_output", "step_output": {"parameters": {...}, "context": {}}}`. Leave the data-table steps UNMOCKED to test against the live table; the snippet runs real and gains the injected `log: ""` key (include it in strict equals). Multiple assertion operators: only `equals` proven; when the expected array content is unknown (e.g. nearest_teams from live row order), first run with a placeholder, read the ACTUAL from the failed job's `job_get` output block, PUT the corrected expectation, rerun — two runs to green.
+- Test-case artifact row (BSYS-29730 builder-J): recipe 83326123 `lookup_career_framework`, table 164711 Career Framework, 4 cases (exact / case-insensitive / team-resolved / not-found), all green on run `cirr-Ac8CF9cp-X39sEJ-CD`.
+
+## RLM package export: "empty or invalid reference to a Genie" (2026-10-25)
+
+- `POST /api/packages/export/:manifest_id` fails per-recipe: "Recipe X has an empty
+  or invalid reference to a Genie at line N". Cause: `assign_task_to_genie` step's
+  `genie_handle` stores a LABEL string ("BT Genie 2.0") with a stale
+  `dynamicPickListSelection` (the pre-fork genie) instead of the workspace picklist
+  option ID. Forked genies/recipes inherit this.
+- Fix: AIRO `recipe_builder_pull` → `recipe_builder_get_picklist(step=<builder step#>,
+  field_path="genie_handle")` → `recipe_builder_set_input_field` with the option ID
+  (`gin-...`, e.g. `gin-AbzEtfoT-LgXXem-CD` for BT Genie 2.0) → push → read-back grep.
+  Builder step numbers differ from raw recipe step numbers (monitor blocks shift them).
+- Export validation walks recipes ONE at a time — one fix per failed export cycle;
+  re-export after each fix. A manifest wedged `status: "working"` forever is the same
+  root cause surfacing in the UI.
+- Also: `wt connections update <id> --folder <fid>` SILENTLY IGNORES the folder field
+  (200, folder unchanged). Raw `PUT /api/connections/<id>` with `{"folder_id": ...}` works.
+- Agentic assets (genie, agentic KB) CANNOT be folder-moved: platform refuses with 422
+  "Folder ID is not allowed to be updated" on both AIRO metadata and raw agentic PATCH.
+
+## Genies-as-MCP-tools: workato_genie attach is API-BROKEN for Agent Studio genies (builder-K, BSYS-29730, 2026-10-24)
+
+- Goal: attach two Agent Studio genies (gin- handles) as tools on one new MCP server
+  (`mcp_server_create` / `POST /api/mcp/mcp_servers/:handle/assign_tools`, `trigger_application:
+  "workato_genie"`). The API docs say `id` is "a string handle when used with workato_genie tools".
+- LIVE RESULT (dev, 2026-10-24): EVERY workato_genie attach 400s
+  `Tools contains invalid asset(s): workato_genie ID 'gin-...'` — on all three surfaces
+  (AIRO create-time tools, REST create-time tools, REST assign_tools), for FOUR different genies
+  (fresh active, fresh stopped, established active with chat_interface "api" + active trigger,
+  same-project stopped twin) and handle-format variants (bare handle, no-prefix). Unknown app names
+  get a DIFFERENT error ("invalid trigger application"), so workato_genie resolves but its asset
+  lookup contains no Agent Studio genies in this deployment — docs ahead of backend.
+- CONTROL: the identical assign_tools call with `workato_skill` + a same-folder/same-project skill
+  handle SUCCEEDS. So the route, auth, and the hidden project rule are fine; it is the
+  workato_genie asset class that validates nothing.
+- Corollary: the only workato_genie bindings that exist estate-wide are LEGACY (flow_id = numeric
+  genie-trigger recipe). No Agent Studio genie has ever been attached via API here.
+- Workaround NOT taken (would need lead/Josh sign-off — changes architecture): wrap each genie in a
+  recipe (Assign Task to Genie / send_business_event) and expose the recipes as
+  workato_recipe_function tools. Clean path: UI attach via the Agent Studio/Enterprise MCP picker,
+  or a platform ticket.
+- Side lessons: new Agent Studio genies are created `state: stopped`; start via
+  `POST /api/agentic/genies/:id/start` (no body needed) — GET /start 404s. AIRO `genie_get` can
+  return bare "Genie retrieved successfully" with NO content in this deployment — verify via
+  `wt api GET /api/agentic/genies/:gin-id` instead. Full skill listing for handle discovery:
+  `GET /api/agentic/skills?per_page=50&page=N` (per_page CAPS at 50 regardless of request;
+  2822 skills = 57 pages).
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Workato platform](domains/workato-platform.md) — incl. **BSYS-29503 observability hardening LIVE (2026-10-11): monitor DST-pure-Ruby Pacific offset + 24/7 silence arm (3h biz-hours / 6h off-hours) + volume-scaled burst threshold max(10, 2% events); computer+rollup = 8x3h slice reads (8k/day, was 3k) + capped_read_alert to #gw-semantic-alerts w/ 6h cooldown (156399); computer responder rows delete-split (today-only wipe, yesterday preserved, probe-verified); daily digest 90d/180d retention compaction w/ deleted_count logged; weekly digest partial-week labeling (deltas vs prior FULL weeks only); REPEAT-LOOP PAGINATION BROKEN on runtime (reads 80-130s in-loop vs 40ms top-level, fixture-hung 2x) = static slices instead; AIRO push STALE-SNAPSHOT reconfirmed (verify stored code via REST after every push); output_format=field_name_to_value renames dump keys and zeroes field-ID-scanning snippets**; **BSYS-29504 ops coverage (2026-10-11): TTL delete 200-row/run cap = drain loop (repeat while deleted_count>199, 1051→0 verified), set_input_field quote-wrap trap (use v4 plaintext/datapill modes), start "account_id blank" = unbound connection (recipe_builder_select_connections pre-start), mutation-chain drill pattern (registry row → compile → prepare → 82284937/82285042 → commit, deterministic object_id for undo)**; **owned-asset health monitoring (2026-10-08): asset-fingerprint.py (ledger→registry, hypercare=prod ≤14d) + workato-health.py (hourly launchd sweep, `wt recipes get` per asset, alarms→triage queue/bus/digest)**; **ops-visibility dashboard (2026-10-08): local 127.0.0.1:8771 web UI over failed+swallowed-error jobs (15-min collector, error-signature dedup, /api/triage→queue, nightly 06:07 pre-autopsy fleet job, first records = Extract Design System prod 403/404 — autopsied 2026-10-08: mock-probe noise + missing envelope, fix = BSYS-29418 under epic BSYS-29417; 2026-10-09 re-scope: dev 78677477 already hardened, remaining = test cases + promotion; + 2026-10-09 harness round: workato-health mock-filter+dedupe LIVE (65 probe jobs excluded estate-wide), regression-nightly re-verifies case lists live, proposal file-gate fixed, dreamer heartbeat name aligned, cortex --add-dir probed (residual: ~/.claude guard), drift-fix project 10593549 inventoried (BSYS-29462), clm-001 vua-persistence CONFIRMED by live probe — full round under epic BSYS-29454)**; watchdog agent (nightly 23:13), push risk scorer, build ledger (/builds, /promotion-ready, /promoted — cross-session multi-agent tracking), recipe corpus index; **platform command `prod-bypass` (on 30m|2h / off / status): time-boxed, audited stand-down of all prod-write gates; guardrails v1.0.0**; **DEV+PROD CLI and WT instances (2026-10-07): `workato`/`wt` = dev ws 3535597, `workato-prod`/`wt-prod` = prod ws 3535598, prod token keychain-only**; — AIRO/Workato platform behavior, traps, asset conventions; `wt` (~/.local/bin/wt) Developer-API wrapper for AIRO/CLI gaps (manifests, packages, lifecycle, jobs, lookup rows, connections, properties); **AI gateway token economics probed 2026-10-07 (in file): provider prefix-caching WORKS in-session (83-98% reads), cold start per new session pays full prefix, tool search unforceable, deniedMcpServers cuts cold-start cost, method trap: never judge caching from single-turn headless runs**; **snowflake-backed MCP tool timeout fix (2026-10-09): ~4:00 caller window on recipe-function MCP tools + result-cache false-successes; fix = cursor pagination per month-partition-pruned query (BSYS-29443), connector limit defaults to 100 silently, f-string pills accept plain refs only**; canonical narrative in ~/Documents/Claude/AIRO-MCP-Reference.md; **CHANGE-TRACKING LAYER LIVE 2026-10-10 (spec: specs/env-diff-promotion-tracking.md): changelog.py (per-project ledger changelog, join on project_id not folder_id, no-ledger-entry section) + env-diff.py (dev↔prod name-join diff w/ NORMALIZED hashing — raw hashes differ for every promoted recipe from env-ID churn; validation gate proven; 7 classes; full-estate first run: 5,773 missing / 757 differ / 486 orphaned / 631 conn-missing / 1 conn-reauth / 51 prop-divergence) + promotion-orchestrator patch (batch = ledger UNION env-diff; connections ARE packageable, credentials-only gap — RE-AUTH lines) + estate-architect Monday drift pass**; **function-schema re-registration rule (2026-10-08): AIRO push doesn't re-register a recipe function's schema — editor open+Save does; do it before touching downstream call sites (never build around the stale cache)**; ; **BSYS-29396 (2026-10-08): test-automation output checks are snapshot comparisons (never record literals for volatile steps — assert the RETURN step); tool vua_required tracks the recipe personalization flag ("End user's connection") — its loss fails the resolver count==tools_count guard closed for ALL callers; wt api POST /api/connections recreates the TEST_MCP_OWNER fixture (provider required, folder_id not root)**; **data-tables record API (2026-10-09): dedicated host data-tables.workato.com + `{"document": {...}}` envelope + wt dt --data double-encode trap (in file)**; procedural SOPs are global skills (airo-mcp-playbook, workato-skill-builder, workato-development-playbook, workato-recipe-control, verify-recipe, handoff); **LEGACY-TREE MINING 2026-10-10 (in file, big section): VUA RUCs pin connector revisions + `preserve_in_runtime_connection` + push-wipes-personalization, recipe_builder_save always new id, editor-save flow_id rewrite, genie→skill trigger locked, SDK traps (retry keys invalid/threads rejected/call-in-input_fields/numeric-strings), Ruby sandbox traps (lambda/#{}-interp/top-level return/Time-inspect parsing), first-1000 starvation + sort-key-ignored, duplicate-write + delta-double-count classes, schema-default-vs-fallback drift, MCP isError gap→structured envelope, connection-lost blocks start (no bypass), scheduler min 5 min, class-sweep + per-service checksums, import stop-prerequisites, techniques (empty-string padding tax 10.24×, forced-pagination, while-loop continuation, 3-profile stress method, latency-attribution ≥20% gate, snapshot architecture), red-team false-success pattern, zArchive/RecipeOps/folder-taxonomy conventions, AI gateway ~60s first-byte deadline + large-arg 504s (Kimi ~18K/GLM ~36K), Genie platform facts (endpoint activation independent, send_business_event no authority, no reply-silent, Decision Models no NL, re-register + fresh conversations, wrapper-JD mirroring, Slack no pipe tables)**; **2026-10-10 /triage day: wt --profile is subcommand-level (no global flag), perl-alarm timeouts (no macOS timeout), prod rate-limit backoff ≥75s under swarm load, zArchive-connection DELETE ruling (Josh: unreferenced prod zArchive conns = artifacts, delete + reimport; trigger watch-list refs survive), BTSUP In-Triage two-hop close (41→111→Resolved), HR Genie reauth playbook (tools.json VUA read + runtime-child connection_lost_at + delete=backend reset + 11-step guide 1107512), prod write gate restored (49 rules allow→ask after allowlist drift)**; **2026-10-11 queue-reversion RCA: gardener git checkout -f over dirty tree discarded 49 decisions (patch-apply failure unverified) — recorder hardened (terminal-slug dedupe, per-row fan-out), harness-health parity guard live (family matching, filed→built, duplicate-seed tolerance), recovery from session record; latent: workato-health triage_append whole-file write race (filed)**; **⛔ 2026-10-10 PROD DESTRUCTIVE-ACTION CONTRACT (BSYS-29283 incident, HARD RULE): never probe-write in prod (exploratory POST = mutation); mid-turn chat fragments ≠ per-action confirmation — bold-warning + exact action list + one explicit yes before ANY prod repair batch; connection reference checks scan recipe config account_id blocks workspace-wide (the cleanup's zero-refs check missed 2 identity funcs); post-import sweep for account_id:null + stub rewires + job-history-truth running state — full contract in this file + playbook skill**; **⛔ POST-IMPORT LINKAGE LAW (Josh 2026-10-11): dev connections + dev env-scoped ids (genie chat_trigger_handle ginct-*) never survive a prod import when a documented prod linkage exists — import-remap.py (registry registries/prod-linkages.json, connection account_id scan + genie picklist diff + --canary: fresh-job trace catch-free + zero new handled-error rows) is a MANDATORY promotion stage gate (post-deploy-smoke steps 3/5, manifest-hygiene checks 6/7, orchestrator Phase 4b); born from the 2026-10-10 P2: import overwrote messenger trigger with dev id → 15 h of failed sends behind green jobs**; **BSYS-29498 batch v5 (2026-10-11): PAGE-COMMIT CUTOVER BUILT+PROVEN in dev (Josh: "don't promote something that sucks") — collector 82862205 v40 commits pages via registry-guarded async Commit Collector Page 82936791 (owner-serialized, replay-safe, mode-gated PAGE_COMMIT kill switch; dual-lane parity + gate-off + 0 handled errors proven); LAW: start async-callee BEFORE caller; FULL intelligence platform promotes as ONE wave — 44 assets (23 recipes + 15 tables + topic + Analyst genie/MCP/3 skills), closure-audited, exclusions rule-based (eval harness = prod-genie testing rule); prod folders created (folder-list API misses subtrees — GET by id); package 42198163; spec+dashboards-docs in project file; open Qs self-ruled (coverage-first UNKNOWN-scope=YES, wait timeout=minutes→raised to 5 both lanes, guard test case KEPT—passes on v40, digest conversion panes DROPPED from prod recreation until BSYS-29499 wires recorders)**
+- - [Jira autotriage loop](domains/workato-platform.md) — skill `jira-autotriage`: the identify-triage-plan-fix loop with the constitutional decision matrix (BSYS Stories = research+plan, Josh authorizes kickoff; BTSUP = immediate triage + customer-tone replies in Josh's voice; Josh's bugs = investigate + dev-scoped remediation; hotfixes NEVER auto-remediated; everything else read-only); fleet job jira-triage (2h); work products group under knowledge/projects/<epic>
+## Scheduler liveness lessons (2026-10-27 jira-triage pass, BSYS-29982)
+
+- Daily-trigger anchor myth BUSTED (dissenter-verified): a Workato daily trigger does NOT "anchor to the next day after a restart" in general; it fires the next FUTURE instance of the scheduled time. A restart at 06:30 still gets a same-day 07:00 tick. BSYS-29982 saw no 10-26 tick because the recipe was STOPPED 06:43, before 07:00. Diagnose "missed tick" from the stop/start timeline against the tick time, never from an anchor rule.
+- Scheduler lag is real: same recipe, a run scheduled 06:21:26 executed 06:43:10 (22-min lag). "Next fire registered" means registered, not punctual; judge liveness by job recency (job counts not moving + registered next-fire in the future = healthy registration).
+- running:true + zero new jobs + registered future next-fire = healthy idle scheduler; do NOT force-run on that shape alone.
+

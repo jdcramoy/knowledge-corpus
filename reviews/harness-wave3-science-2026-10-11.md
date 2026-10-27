@@ -277,3 +277,10 @@ cells decay; axes reviewed quarterly.
 
 Nothing here is queued or filed — Josh picks; picks become proposals through the normal
 /proposals path.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Harness wave-3 science review](reviews/harness-wave3-science-2026-10-11.md) — 2026-10-11 fusion (deepseek+glm+kimi-signal+adjudicator) for physics/QM/evolution ideas beyond waves 1-2: top tier = trials-factor null calibration for the dreamer, fluctuation-dissipation noise-floor gate on improvement claims, LHC trigger hierarchy w/ prescales+minimum-bias+novel stream, Muller's-ratchet recombination for the patch genome, multimessenger coincidence w/ systematics vetting for the bus, N_eff correlated-error accounting for fusion panels, pleiotropy-gated trust ladder, AlphaEvolve/QD archive; cross-pollinations (RG×neutral-theory cryptic-variation bank, QEC×ratchet panel decorrelation κ>0.5 rule, prescale×bet-hedging novel stream)

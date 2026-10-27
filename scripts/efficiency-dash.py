@@ -71,7 +71,8 @@ def day_of(ts):
 def load_days():
     days = collections.defaultdict(lambda: dict(out=0, inp=0, cr=0, cw=0, turns=0,
                                                 calls=0, fails=0, fails_hooked=0, fails_other=0,
-                                                closeouts=0, builds=0, jira_done=0, points=0))
+                                                closeouts=0, builds=0, jira_done=0, points=0,
+                                                recipes=set()))
     re_use = re.compile(r"in=(\d+) out=(\d+) cache_read=(\d+) cache_write=(\d+)")
     for line in open(f"{K}/garden-reports/usage-ledger.jsonl"):
         if '"turn-usage"' not in line:
@@ -100,7 +101,10 @@ def load_days():
             r = json.loads(line)
         except Exception:
             continue
-        days[day_of(r.get("ts", ""))]["builds"] += 1
+        d = days[day_of(r.get("ts", ""))]
+        d["builds"] += 1
+        if r.get("recipe_id"):
+            d["recipes"].add(str(r["recipe_id"]))
     jira_cache = f"{K}/scripts/efficiency-dash-jira.json"
     if os.path.exists(jira_cache):
         for d, v in json.load(open(jira_cache)).get("per_day", {}).items():
@@ -214,11 +218,14 @@ def main():
             cls_day[s["day"]][s["class"]] += s["tok_out"] + s["tok_in"] + s["tok_cache"]
 
     rows = []
+    rec_union = set()
+    for d in days.values():
+        rec_union |= d["recipes"]
     for k in keys:
         d = days[k]
         total = d["inp"] + d["out"] + d["cr"] + d["cw"]
         usd = (d["inp"] + d["cw"]) / 1e6 * RATE_UNCACHED + d["cr"] / 1e6 * RATE_CACHED + d["out"] / 1e6 * RATE_OUTPUT
-        rows.append({**d, "day": k, "total": total, "usd": usd,
+        rows.append({**d, "recipes": len(d["recipes"]), "day": k, "total": total, "usd": usd,
                      "fail_rate": (d["fails"] / d["calls"] * 100) if d["calls"] else None,
                      "fail_rate_hooked": (d["fails_hooked"] / d["calls"] * 100) if d["calls"] else None,
                      "fail_rate_other": (d["fails_other"] / d["calls"] * 100) if d["calls"] else None})
@@ -291,6 +298,7 @@ def main():
         ("Shipped closeouts", f"{sum(r['closeouts'] for r in rows):,}", "mission-control work units"),
         ("Jira done / points", f"{sum(r['jira_done'] for r in rows)} / {sum(r['points'] for r in rows)}",
          "BSYS closed in window" + (f" · JQL cache {time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(f'{K}/scripts/efficiency-dash-jira.json')))}" if os.path.exists(f"{K}/scripts/efficiency-dash-jira.json") else " (no cache)")),
+        ("Recipes touched (window)", f"{len(rec_union):,}", "distinct recipe IDs, primary ledger attribution"),
         ("Tok / closeout (3d)", f"{last['tok_per_co3_proj']/1e6:.1f}M" if last.get("tok_per_co3_proj") else "—",
          (f"was {rows[0]['tok_per_co3_proj']/1e6:.1f}M on {rows[0]['day']} (projected series; solid/real from "
           f"{next((r['day'] for r in rows if not r['co3_projected']), '—')})")),

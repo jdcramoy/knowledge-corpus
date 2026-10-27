@@ -25,8 +25,8 @@ fractal) that makes the harness valuable, separate from the mechanics the
   placeholders hit. NOTE: the pre-push secret-scan hook is NOT installed in
   the pack repo's .git/hooks — installing it is still open.
 - **Personal copies staged (2026-10-15):** mirror clones at
-  `~/Documents/workato-dev-kb.git` (332K) and `~/Documents/workato-agentic-kit.git`
-  (2.71M), ready for `git push --mirror` to a personal GitHub once Josh runs
+  `~/Documents/workato-dev-kb.git` and `~/Documents/workato-agentic-kit.git`,
+  ready for `git push --mirror` to a personal GitHub once Josh runs
   `gh auth login` with the personal account. Drag-and-drop web upload also
   viable for the kit (files only, minus dotfiles).
 - **Raw brain + BT Confluence stay OUT** — the pack is the shareable
@@ -50,3 +50,17 @@ fractal) that makes the harness valuable, separate from the mechanics the
    consumer's local-memory ingest tier in exported fractal.py.
 3. Josh-gated follow-on: BT Confluence tier if BT approves; contribution
    intake if adopted.
+
+## --with-corpus installer flag (2026-10-19, commit 98fda21)
+
+`install.sh --with-corpus` clones Workato-All/knowledge-corpus into
+~/.claude/knowledge before the fractal build (step order: ... index, corpus,
+fractal, smoke). Never overwrites an existing tree: corpus-origin clones get
+git pull --ff-only; personal trees left untouched with a DEGRADED note.
+Plain git clone first, gh repo clone fallback (gh keychain auth). No access
+(internal-only repo) degrades — public mirror users get the plain install.
+Verified: skip/clone/gh-fallback/personal-tree/stray-dir branches tested
+against the live repo; both org + mirror repos read back at 98fda21.
+Unverified live: the git pull --ff-only update path (needs teammate git auth;
+detection logic verified). A teammate's first real `--with-corpus` run is the
+final confirmation.

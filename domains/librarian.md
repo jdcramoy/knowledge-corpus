@@ -76,3 +76,10 @@ says so; that is a valid outcome.
 - `domains/brain-architecture.md` — the structural rulebook every doc obeys
 - `domains/dream-loop.md` — gossip bus protocol + trust-ladder precedent
 - `domains/harness-docs.md` — external publishing stays Josh-gated
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Librarian](domains/librarian.md) — 8th agent, LIVE 2026-10-11: first PRODUCER in the fleet — technical writer + content procurement; organizes the corpus, writes novel docs (consolidations on librarian/* branches, architecture-based primers additive to main), dissenter-collab position pieces with mandatory dissent log, procures external beats (AI/business-systems/software-dev/integration) by consuming the weekly news outputs + targeted searches; write authority additive=direct/edits=branch; weekly Sun 21:37 + on-demand

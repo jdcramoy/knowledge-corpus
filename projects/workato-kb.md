@@ -637,3 +637,146 @@ dirty — check `git status` BEFORE building on it; both sessions landed).
   (Ad-hoc multi-import test scripts hit a weird `inspect`-patching side
   effect + semantic-gateway EVENTS dump — startup hook artifact, not a repo
   defect; test source modules with `python3 -m kb.<mod>` in fresh processes.)
+
+## FULL-CORPUS SEARCHABILITY AUDIT (2026-10-16, after the ASEE gap made Josh ask "what else?")
+
+Two silent gaps found and fixed, both the same class: ingested but never wired.
+
+- **GAP 1 — BM25 leg dead since inception.** `chunks_fts` is external-content
+  fts5 with NO populate path anywhere in indexer.py — the index had 0 rows
+  even in the 2026-10-08 backup. Every search ever ran dense-only; the
+  "hybrid" was a lie. Fix: `build()` now runs the fts 'rebuild' command
+  after every build (~11-20s for 386k chunks — cheap, exact). Eval
+  before/after (275 queries): overall recall .8945→.9055, MRR .8312→.8510,
+  cross-source MRR +5.5pp; hard-sibling −2.5pp (sibling tiebreak was tuned
+  dense-only — retune candidate). results-fts-restored.json is the new
+  regression reference. Lesson: the eval measured the system as-built, so it
+  never noticed a whole dead leg — an eval can't test for components that
+  contribute nothing.
+- **GAP 2 — snowflake/dbt/trigger had no nightly step** (ingested waves 1/3,
+  never wired into sync.py or CORE_SOURCES). Wired into the llms loop +
+  CORE_SOURCES; scoped sync ran (dbt 912 changed, trigger 28, snowflake 1).
+- 31 orphan vec rows purged (chunks deleted after embed; indexer purge SQL is
+  keyed right, the rows predate it). Integrity now: vec 386,586 == chunks,
+  0 vectorless, 0 orphans. Fractal audit OVERALL PASS.
+- Vestigial: `morning-paper.jsonl` empty (content lives under rss) — harmless.
+- All 40 sources live-probed; per-source availability OK (the crude
+  generic-term probe is a weak discriminator — github floods generic queries
+  at 16k docs; the eval is the real gate).
+
+## Workato org code ingest (2026-10-16, commit be7e99b, Josh: "ALL of the workato code")
+
+- The two vendor-canon SDK repos were cloned 2026-10-13 but the md/html rule
+  ingested only 4 files — the knowledge IS the Ruby source. New
+  `CODE_EXTENSIONS` in github_source ingests .rb/.gemspec (SDK: 173 docs),
+  .rb connector examples (custom-connector-docs: 95), .java/.yaml
+  (opa-extensions: 3), .yaml/.tpl (edge-gateway-helm-charts: 10). +302 docs.
+- Org survey: the rest of github.com/workato is Ruby OSS forks (internal
+  infra); the dev-relevant set is now complete. Embed samples
+  (full-embed-sample, connection-embed-sample) noted, not yet ingested —
+  Vue apps, low doc value.
+- Synthesis docs dispatched (sibling agents): domains/workato-sdk-internals.md
+  (SDK ground truth from code) + domains/workato-dev-apis.md (full dev-API
+  inventory with citations) — both end with product-feedback sections.
+
+## Confluence spaces nightly-gap fix (2026-10-16, commit 10bb410)
+
+ASEE (Forward Deployed Engineering) was backfilled 2026-10-10 (commit 57c50ee)
+but the nightly `_confluence_best_effort` loop only covered ("extbt", "intbt")
+— asee/gears/cssup went stale. Fixed: loop iterates `confluence_sync.SPACES`
+so future spaces are nightly by default. Scoped sync ran live (asee 180 seen /
+1 changed, gears 176 changed, cssup 380 changed) + index rebuild (722 docs
+updated, 2 added, 2,924 chunks embedded, 0 vectorless). KB probe verified:
+"Customer 360 process MCP user guide" → exact ASEE page (`confluence/asee`).
+
+## Wave 5b: LangChain Hub prompt catalog (2026-10-15, Josh: "go nuts", commit 32453f1)
+
+Correction to the wave-5 line: the public list API DOES exist — the morning
+probe hit the wrong paths. `GET api.hub.langchain.com/repos?limit=100&offset=N`
+→ `{repos: [...], total}` (10,322 public prompt repos: tags, likes, downloads,
+views, num_commits, last_commit_hash); `GET /commits/<owner>/<repo>` →
+serialized prompt manifests. New `kb/langchain_hub_source.py`:
+
+- **Template extraction = recursive walk** of the manifest — `template` sits
+  at `kwargs.template` (PromptTemplate) or nests under
+  `kwargs.messages[i].kwargs.prompt.kwargs.template` (ChatPromptTemplate);
+  collect every {template, template_format, input_variables} node (14,838
+  templates total, multiple per repo).
+- **Change-sig skip**: nightly fetches only repos whose
+  updated_at/num_commits/last_commit_hash changed.
+- **9,961/10,321 repos landed (96.5%)** — ~47 rotating 429 stragglers per
+  pass (DAC-style rotating victims), self-heal on the nightly; chunked
+  fetch+write with per-chunk manifest saves (crash-safe).
+- **TWO prune bugs, same-day, both guarded:** (1) a scoped `--pages 1` pilot
+  run with the unscoped prune deleted 5,885 manifest rows + files (rows
+  survived with files gone = silent refetch-skip landmine — repair: drop
+  file-less rows, refetch); (2) failed LISTING pages read as upstream
+  deletions and pruned fresh docs. Law: PRUNE ONLY ON A COMPLETE UNSCOPED
+  WALK; rows-without-files are a corruption class worth auditing anywhere a
+  prune exists.
+- Corpus ~105k docs / ~383k chunks. Fractal OVERALL PASS (98.55/99.53/0
+  orphans); eval recall FLAT vs wave 5 (zero displacement from +27k prompt
+  chunks), MRR −0.6pp vs baseline (dilution). Live probes: RAG prompt queries
+  land exact hub prompts; "system prompt generator" lands the superb_system_
+  instruction_prompt family.
+
+### Wave 5b restore COMPLETE + full-feature audit (2026-10-16, this session took over)
+
+- Josh handed the langchain-hub restore to this session. Overnight the wave-5b
+  session had landed its commits (incl. the complete-flag prune hardening +
+  daemon-first MCP work) and healed most of the corpus. This session ran one
+  more full sweep (sha-skipped the healthy 9,96x, fetched stragglers; a
+  handful of upstream-dead repos 404 and are recorded as errors, not pruned),
+  then `kb.ingest --quick` (126 docs added / 6,860 re-embedded / 51,124
+  chunks) and `kb fractal build` + coverage (AIRTIGHT, 0 gaps).
+- **Full-feature audit (cross-layer, /tmp/feature_audit.py pattern):**
+  - **atlassian:** 656 manifest rows (652 docs + 4 pathless swagger-etag rows
+    the indexer correctly skips) → 652 files → 652 docs indexed → 5,485
+    chunks, 0 missing vecs → 652 file / 5,342 section / 5,485 chunk
+    factlets. 0 orphans, 0 missing files. EXACTLY 1:1 file:doc:file-factlet.
+  - **langchain-hub:** 9,966 rows = 9,966 files = 9,966 indexed docs →
+    27,289 chunks, 0 missing vecs → 9,966 file-level factlets (1:1), ~24k
+    section / ~27k chunk. Note: `source LIKE 'hub://%'` ALSO matches the HF
+    wave-5 sources — count with `level=1` + `COUNT(DISTINCT source)` for the
+    1:1 check (61k raw rows ≈ 10k docs × 3 levels is the expected shape).
+- **Live probes:** hub SQL-chain query → exact text-to-sql prompt docs top-5;
+  zoom on both sources returns correct factlets with drill pointers.
+- **Myestery root-caught: `/tmp/inspect.py`** (leftover data-tables debug
+  probe from Oct 12) shadowed stdlib `inspect` for ANY script run with
+  sys.path[0]=/tmp — dataclasses import crashed with a gateway EVENTS dump.
+  Renamed to /tmp/dt_inspect_probe.py. Repo and daemon were never affected.
+
+## Harness re-ingest: tech-review lessons (2026-10-21)
+
+Scoped `kb.sync --sources harness` (459 written) → `kb.ingest --quick` (FTS rebuild 18.8s) → `kb fractal build` → `kb fractal_audit` OVERALL PASS (sections 98.17%, chunks 99.52%, 263 topics, 0 orphans). New files indexed: domains/tech-review-lessons-learned.md (12 chunks, doc 243378) + workato-development-playbook SKILL.md update (25 chunks, doc 243385). Live probes: search ranks both #1/#2 above the intbt Recipe Deployment Process page; zoom returns the file + chunk factlets with drill pointers. Integrity: 392,856 chunks, 0 vectorless; 31 orphan vec rows = the known vestigial set, left untouched. Corpus state note: index/kb.db is the live DB (DATA_ROOT/kb.db is a 0-byte stub — probe the index dir).
+
+## Honest zero: lens-degraded headers in the digest (2026-10-19, proposal 2026-10-15-changelog-lens-zero-bits)
+
+- **Change:** `kb/digest.py` now tracks per-lens retrieval health. When a lens
+  query's `confidence_bits` metric is 0.0 for `ZERO_BITS_PASSES` (2) consecutive
+  passes, its digest section header renders
+  `### <topic> — LENS DEGRADED (0.0 bits xN, last fresh hit <date>)` and the
+  stale hits are suppressed (count shown). A lens that reads nothing can no
+  longer present months-old posts as "no news".
+- **State:** `~/.claude/workato-kb/digest-lens-state.json` (beside the other
+  digest state in DATA_ROOT): per `agent/label` lens → `zero_streak` +
+  `last_fresh`. Last-fresh = last pass a current-year hit appeared in the
+  oversampled top-K for recency sources (changelog/blog); for evergreen
+  sources, last pass with bits > 0 and hits at all. `KB_LENS_STATE` env
+  override for dry runs, mirroring `KB_DIGEST_DIR`.
+- **Verified live 2026-10-19:** real digest run (clean state, /tmp digest dir)
+  + simulated 0.0-bit dry run through the real `build_digests` path — degraded
+  header rendered with streak 1→2 crossing, non-degraded sections unchanged,
+  streak resets on bits > 0. Changelog lens TODAY: 3.46-3.58 bits, top hits
+  still "Product Scoop – April 2026" (nonzero bits but months old — the
+  staleness pathology persists; metric-based trigger did not fire today).
+- **Unrelated live finding:** no full nightly sync diff report since
+  `diffs/2026-10-14.json` — every digest since 10-15 renders SYNC FAILED. The
+  sync job needs investigation (out of scope here).
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Workato KB (RAG++)](projects/workato-kb.md) — **2026-10-16 AUDIT: BM25 LEG WAS DEAD SINCE INCEPTION (chunks_fts never populated — every search ran dense-only; now rebuilt in indexer every build, eval recall +1.1pp/MRR +2pp, cross-source MRR +5.5pp); snowflake/dbt/trigger never had nightly steps (wired); confluence nightly covers all SPACES (asee/gears/cssup were stale); Workato org code INGESTED (SDK Ruby source 173 docs, 96 canonical connector examples, opa-extensions, edge-gateway charts — CODE_EXTENSIONS in github_source); synthesis docs: domains/workato-sdk-internals.md + domains/workato-dev-apis.md**; **WAVE 5b LANGCHAIN HUB IN 2026-10-15 (10,322 public prompt repos listed, 9,961 docs landed w/ 14.8k extracted templates incl. input vars + format; recursive manifest walk; change-sig nightly skip; TWO prune bugs guarded — prune ONLY on complete unscoped walk; corpus ~105k docs/383k chunks, fractal PASS, eval flat, commit 32453f1)**; **WAVE 5 CRAWL MANDATE 2026-10-15 (corpus ~95k docs / 355k chunks, commit 404743f — also carried wave 6's uncommitted workday/atlassian wiring): HF library docs (6 sites, 1,604p, version-stripped URLs), pwc dumps (31.7k docs: dataset/method cards + 8k SOTA tables from pwc-archive parquet), apis-guru (2.5k API cards), terraform-registry (5.6k namespace catalogs, metadata-only per HashiCorp rule), figshare (budgeted firehose-verify — search API ignores category filters, verified), developer-roadmap (11k pages, sparse blobless clone of roadmaps/), 8 self-healing/EDA/universality webcrawl sites (self_start option); NEW llms-scout pipeline = 2,849-site candidate queue at scout/llms-site-queue.jsonl (report step, never core); 429 circuit-breaker in common.py (Retry-After aware); fractal_audit pseudo-URL fix (pwc:// etc. now credit); fractal PASS 98.26/99.48/0 orphans; eval −1.6pp = dilution artifact (corpus +141%, sibling-crowding verified); LangChain Hub probed NOT ingested (no public list API)**; **ATLASSIAN DEV DOCS INGESTED 2026-10-15 (developer.atlassian.com cloud: Jira Cloud 251p, Jira Software 108p, JSM 107p, Confluence Cloud 121p, Rovo MCP/A2A 17p = source `atlassian`, 652 corpus files incl. ~222 OpenAPI-exploded REST API-group docs; window.__DATA__ raw-markdown extraction adapter, commit 9e891de; fractal AIRTIGHT, live-probed)**; **SLACK DOCS INGESTED 2026-10-14 (docs.slack.dev, 3,274 en-only pages incl. 756 API-reference pages, source `slack`, llms.txt+sitemap adapter in llms_source.py, CORE_SOURCES floor, commit 69d823b; corpus 38.8k docs/250.9k chunks, fractal PASS, eval in-source −0.5pp)**; **ASEE+GEARS+CSSUP spaces INGESTED 2026-10-10 (797 pages, 179 GOLD, 20-agent scored; standard space-ingest process in the file + curation report; indexer confluence-manifest discovery fixed dynamic)**; **PIPELINE AUDIT 2026-10-10 eve: auto-memory-ingest bug FIXED+live-proven (harness 116→281 docs), scoped-report clobber fixed, funnel wired into nightly, kb-audit monitor fleet 3x daily (9 checks incl. live retrieval probe) PASS 9/9, fleet runner symlink restored**; **v0.7.0 THE FIVE LEAPS** 2026-10-08 overnight (calibration cards; dissenter triad w/ learned critic weights; rehearsal cortex w/ proven fixture extraction; fractal factlets 64,238 + zoom retrieval; MRL coarse-fine funnel w/ coverage guard; criticality meter; KB MCP server; event-driven dreamer wakeup; (`kb` CLI shim everywhere + CLAUDE.md query mandate; lateral graph cross-domain via burstiness concept filter — docs x practice hidden pairs; Sunday full-KB dream mandate; (dreamer lens calls across kimi-k3/glm-5.3-flash/deepseek-4.1-flash via AI gateway, Kimi cost-governed to 1 rotating lens/night + Sunday full board; (board minutes -> draft Confluence Mondays 06:27 via fleet `minutes` job; cross-model lens mandate; empirical-dream budget 2/night in auto-dev; outcomes flywheel LIVE on the real ledger — posterior P(accept) 0.887 from 11 records, flywheel opens /proposals; (Board of 9 professional lenses, lateral hidden-connection engine [vectorized Adamic-Adar], dream_math [Beta P(accept) + EV + assumption regression], memory-entropy report; roadmap + fan-out complete: (LLM contextual headers via local ollama, attachments machinery, /kb slash command, 6-agent nightly digest fan-out w/ opinions-to-bus, dreamer multi-lens creativity protocol, kit baf6863; sync 21:37 + digest 22:07 ahead of the fleet): 9 sources / 10,274 docs / 63,952 chunks; docs.workato.com (4,342 via llms.txt md-twins) + changelog (252) + blog/The Connector (1,197) + Automation Inspiration (88) + GitHub arch-canon (320) + EIP (103) + Claude docs (625) + BT Confluence (3,352, LOCAL-ONLY, token sync LIVE v2-pagination — v1 CQL broken on tenant); stack: BM25+bge-base+RRF+reranker × entropy × PMI + confidence-gated round 2; integrity verified vec==chunks; repo ~/Documents/workato-kb (5b6e6fc), skill workato-kb, launchd 02:07; dreamer nightly 3-mode KB review + grill-gate/onboarding/playbook wired; remaining: LLM chunk headers, PDF attachments, fleet packaging

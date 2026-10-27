@@ -1,8 +1,8 @@
 # Investigation: Google Docs by Workato MCP — bullet & table deletion failures
 
 - **Date:** 2026-10-14 (headless cortex investigation session)
-- **Trigger:** Two independent user reports — (a) Jon Dart: deleting bullets via
-  `deleteParagraphBullets` errors/wrong behavior; (b) Richy Mulcahy: removing a
+- **Trigger:** Two independent user reports — (a) [colleague]: deleting bullets via
+  `deleteParagraphBullets` errors/wrong behavior; (b) [colleague]: removing a
   table row errors/wrong behavior. Fix session importing package BSYS-29692
   (gdocs-mcp) into Workato folder 35833467 is running concurrently.
 - **Scope:** Read-only. This file is the only artifact touched. No Workato assets,
@@ -80,10 +80,10 @@ and response from a failed job trace before finalizing the fix.**
 The two API-semantics behaviors that most plausibly LOOK like connector bugs to end
 users, with HTTP 200 and no error:
 
-- Bullets (Jon Dart): (a) range overlap deletes MORE bullets than intended (all
+- Bullets ([colleague]): (a) range overlap deletes MORE bullets than intended (all
   nesting levels in range); (b) post-delete indentation shifts indexes; (c) bullets
   removed but text retained — a user expecting the line to disappear calls it wrong.
-- Table row (Richy Mulcahy): (a) merged-cell span deletes multiple rows; (b) deleting
+- Table row ([colleague]): (a) merged-cell span deletes multiple rows; (b) deleting
   the last content row deletes the ENTIRE table; (c) zero-based `rowIndex` vs a human
   counting from one — passing "row 2" as index 2 deletes the third row, silently.
 
@@ -155,10 +155,10 @@ cover both reports:
   and a correct zero-based `rowIndex`.
 - **Pass criteria (all must hold, verified by a FRESH `get` + visual/doc readback):**
   1. Bullet item 2's marker gone; its text retained; indentation visually preserved;
-     the other three bullets intact — proves the Jon Dart report closed (no
+     the other three bullets intact — proves the [colleague] report closed (no
      over-deletion, no error).
   2. Exactly one table row removed — the SECOND data row; header and other rows'
-     content unchanged; table still present — proves the Richy Mulcahy report closed
+     content unchanged; table still present — proves the [colleague] report closed
      (correct target, no whole-table deletion, no 400).
   3. Request (2) succeeded inside the same batch despite request (1) shifting indexes
      — proves the connector recomputes offsets mid-batch rather than using a stale
@@ -170,7 +170,7 @@ cover both reports:
 
 ## What was NOT verified
 
-- The actual error text/traces from Jon Dart's and Richy Mulcahy's sessions (not
+- The actual error text/traces from [colleague]'s and [colleague]'s sessions (not
   available in this read-only scope) — §2 attribution is hypothesis-ranked, not
   adjudicated.
 - The BSYS-29692 package contents and the gdocs-mcp connector source (not read).

@@ -50,3 +50,16 @@ I have re-added the Slack chat interface pointing at your existing app and start
 Posts to https://workato.atlassian.net/browse/BTSUP-78227 under Josh's name.
 Track replies in ~/.claude/knowledge/slack-posts.jsonl? No: Jira ticket, the
 comment itself is the thread; the nightly watchdog covers ticket replies.
+
+## STAGED FOR EXECUTION (Josh go 2026-10-16, triage pass)
+
+Josh's go recorded in triage 2026-10-16. Execute in a firing session with per-action
+confirmation before each prod step:
+
+1. Re-add the Slack chat interface on the genie build page, reusing app A0C7HLXDUEN
+   (never create a new trigger).
+2. Start the genie; verify running flag.
+3. DM test; capture the job trace line.
+4. Post the drafted customer reply (josh-writing-voice pass first).
+
+Ticket: https://workato.atlassian.net/browse/BTSUP-78227

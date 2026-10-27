@@ -5,7 +5,8 @@ flowchart TD
 %% No vibes: every node below was confirmed against at least one of those two sources.
 %% FAMILY COVERAGE (explicit, per session scope):
 %%   REPRESENTED: (1) BP Completion Notification family (BSYS-28313, folder 35673674);
-%%                (2) Consumer Endpoints / OOO Status family (BTSUP-72246, folders 35693717 + 35712142 per tracker).
+%%                (2) Consumer Endpoints / OOO Status family (BTSUP-72246, folders 35693717 + 35712142 per tracker);
+%%                (3) JSM / Slack two-way interactivity family (BSYS-29430, folder 32092194, added 2026-10-16).
 %%   OMITTED (documented in kf + Confluence tree, not drawn here):
 %%     - Inbox Task pipeline: Discovery Hub 74482795, Detail 74482074, Reconciler 74506733, Escalator 74505400 (kf L136-146, L286-289)
 %%     - PTO pipeline: Process New Request 74247462, Decision 74247862, Reminder 74248295, PTO Escalator 74248506, gate 82202341 (kf L289-291)
@@ -40,6 +41,15 @@ flowchart TD
     APIG["🔌 API collection: HR Genie | Consumer Endpoints<br/>group 1404598 · endpoint v1/ooo-status ACTIVE · client team-ui-eng-utilities 1285074<br/>policy 60/min 5000/30-days · key 1372333<br/><i>src: kf L65-67, L83-85</i>"]
   end
 
+  subgraph JSF["JSM / Slack two-way interactivity family — BSYS-29430, folder 32092194 (kf L1145-1204)"]
+    direction TB
+    JEXT["🌐 Jira automation webhooks (workato-sandbox JSM)<br/>Work item commented / Field value changed = Status → Send web request<br/><i>src: kf L1211-1216</i>"]
+    JNC["🔁 REC | Notify requester on JSM ticket comment 82919876<br/>RUNNING · webhook → HROPS+comment filter → JSD get_comment → join lookup → messenger ticket_update<br/>loop guard: comment author not-contains integrations.hr@workato.com<br/><i>src: kf L1163-1165, L1216-1217</i>"]
+    JNS["🔁 REC | Notify requester on JSM ticket status change 82919975<br/>RUNNING · same shape · status read from payload issue.fields.status.name<br/><i>src: kf L1166-1168</i>"]
+    JSK["⚙ FUNC | add_hr_ticket_comment skill skl-Abs4KExE-pwt4Wt-CD / recipe 82919977<br/>ATTACHED to HR Genie · param comment_text + optional ticket_key (else reverse lookup by conversation_id)<br/>JSD create_comment public=true · blank-ticket guard<br/><i>src: kf L1169-1173</i>"]
+    JMAP[("🗄 HR Genie | JSM Ticket Conversation Map<br/>data table 157888 · ticket_key PK + genie_conversation_id + requester fields<br/>forward write: create_hr_ticket 74349819 step 16<br/><i>src: kf L1151-1156</i>")]
+  end
+
   WDCONN["🏢 Workday backend ISU connections<br/>19760013 (SOAP/WQL, impl tenant wd108) · 19218617 (REST)<br/><i>src: kf L56-57</i>"]
   SLACKBOT["🏢 Slack bot app BT Consumer Endpoints A0C6Y8E5U3C<br/>scopes groups:read users:read users:read.email · bot user U0C7TT30QKA<br/>custom OAuth profile 45994 · connection 22250878<br/><i>src: kf L69-74</i>"]
   MSG["⚙ FUNC | Send Genie Event 74094657<br/>messenger choke point — BOUNDARY NODE, family internals omitted<br/><i>src: kf L199-202</i>"]
@@ -69,6 +79,16 @@ flowchart TD
   APIG -- "serves" --> APIP
   VLAD -- "GET v1/ooo-status · Api-Token" --> APIG
 
+  JEXT -- "comment webhook" --> JNC
+  JEXT -- "status webhook" --> JNS
+  JNC -- "join lookup by ticket_key" --> JMAP
+  JNS -- "join lookup by ticket_key" --> JMAP
+  JNC -- "continue-conversation" --> MSG
+  JNS -- "continue-conversation" --> MSG
+  GENIE -- "invoke_skill" --> JSK
+  JSK -- "reverse lookup by conversation_id" --> JMAP
+  JSK -- "public comment on ticket" --> JEXT
+
   classDef rec fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
   classDef func fill:#ccfbf1,stroke:#0d9488,color:#134e4a
   classDef util fill:#f1f5f9,stroke:#64748b,color:#0f172a
@@ -76,16 +96,18 @@ flowchart TD
   classDef api fill:#ffedd5,stroke:#ea580c,color:#7c2d12
   classDef boundary fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,stroke-dasharray:6 3,color:#3b0764
   classDef ext fill:#f8fafc,stroke:#64748b,color:#0f172a
-  class HUB,RETRY,RSYNC,SNAP rec
-  class PROC,RES,MSG func
+  class HUB,RETRY,RSYNC,SNAP,JNC,JNS rec
+  class PROC,RES,MSG,JSK func
   class PROBE util
-  class BPLOG,ROSTER,SNAPTB,CEAUD table
+  class BPLOG,ROSTER,SNAPTB,CEAUD,JMAP table
   class APIP,APIG api
   class GENIE boundary
-  class WDCONN,SLACKBOT,SLACK,WDCONN,VLAD ext
+  class WDCONN,SLACKBOT,SLACK,WDCONN,VLAD,JEXT ext
   class BPF fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px
   class CEF fill:#f0fdfa,stroke:#14b8a6,stroke-width:1.5px
+  class JSF fill:#fdf4ff,stroke:#a855f7,stroke-width:1.5px
 
 %% --- change log (max 10, newest first) ---
+%% 2026-10-16 added JSM / Slack two-way interactivity family (BSYS-29430) per accepted proposal (dissent scope: JSM family only): notify 82919876/82919975, skill 82919977, table 157888, Jira automation webhooks, loop guard; all cites kf L1145-1217. %%
 %% 2026-10-08 restyled: classDefs (rec/func/util/table/api/boundary/ext) + role emoji; content and citations unchanged. %%
 %% 2026-10-08 initial asset graph created (first diagram): scoped to BP Completion Notification + Consumer Endpoints families per session task; omitted families listed explicitly in header comment; sources = hr-genie.md knowledge file lines + live dependency-tracker ws 3535597 (which also surfaced a folder drift: Consumer Endpoints recipes now in 35712142, kf still cites 35693717). %%

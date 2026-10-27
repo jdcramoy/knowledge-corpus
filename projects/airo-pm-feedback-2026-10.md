@@ -12,11 +12,8 @@ Full context: `people/pm-grace-ng.md` (her file), `domains/harness-benchmarking.
 
 ## Status
 
-- DM with the 12 [AIRO] items + 1 thank-you SENT to Grace 2026-10-15
-  (tracked in slack-posts.jsonl). Awaiting her routing confirmation; Josh
-  files once she answers.
-- **Filing package ready:** `airo-pm-filing-package-2026-10-15.md` — per-ticket
-  type/severity/routing/evidence for all 12 rows, keyed to the DM numbering.
+- Meeting 2026-10-14. DM drafted with the 12 [AIRO] items + 1 thank-you.
+- Josh holds filing until Grace confirms the example ticket routes to her first.
 - Top opener: data_table_query 404, acknowledged by Ivan 2026-09-25 as "work
   ongoing", still 404ing on live probe 2026-10-14 (table 3fff8d6a).
 
@@ -63,6 +60,29 @@ Full context: `people/pm-grace-ng.md` (her file), `domains/harness-benchmarking.
 12. Context cost: AIRO MCP ≈20k tokens/server, dev+prod ≈41k = 32% of harness
     context tax (measure_mcp.py, 2026-10-12, harness-benchmarking.md). Ask:
     schema slimming / tool-search support.
+13. Export-manifest package build fails when any included asset references a
+    connection that lives in a sibling subfolder — engine errors "Connection
+    Home/<project>/Connections/CON | X is not found under Home/<project>/Automation"
+    even though the manifest row correctly anchors the connection in /Connections
+    (verified by in-page read-back of manifest 368059; 3 export attempts
+    2026-10-19/20, identical error, row shapes varied). Blocks ZIP-level
+    manifest verification. Ask: export engine should resolve connection deps
+    from the manifest's own row paths, not co-location with the referencing
+    recipe.
+14. API package import T.must-fails in prod for mcp_server/agentic asset
+    types — the import path nil-crashes on those asset classes (observed
+    during the gslides prod-incident recovery, 2026-10-14; worked around by
+    manual tool re-add). Ask: make the import path tolerate or clearly
+    reject agentic/mcp_server assets instead of a T.must nil crash.
+15. Builder session semantics are BY DESIGN but agent-hostile (Josh verdict
+    2026-10-20; agents now trained on both, playbook non-negotiables #6/#7):
+    (a) `session_id` shared across tool families — a recipe-builder session
+    id reused for `genie_update` pollutes the request URL with the recipe's
+    full JSON → `414 Request-URI Too Large`; (b) first `set_input_field` on
+    a brand-new step rejects "not available in the current input schema"
+    until a `get_input_schema` warm-up call on that step. Ask: server-side
+    session isolation per tool family, and auto-warm the input schema on
+    step creation.
 
 Thank-you: docs_get reference in schema error messages = best error design on
 the platform; hook-enforced on our side because models ignored it (84 loads vs

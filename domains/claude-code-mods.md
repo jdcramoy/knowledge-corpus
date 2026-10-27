@@ -488,3 +488,122 @@ Personal slash command at `~/.claude/commands/reload-session.md` (global — wor
 Gotchas learned:
 - Slash commands load at session start — the session that CREATES the command can't use it until next session. The verification probe: `claude -p "/reload-session"` (headless fresh session) — proves the command file loads, parses, and executes end-to-end for ~one small session's cost. Reusable as the live-verification loop for any command file (the output follows the command's structure exactly — verdict-first sections — which is what distinguishes a loaded command from the raw string being treated as prose).
 - Lightweight alternative to a mod: anything that's just "inject a well-structured prompt" needs no plugin/hooks machinery — a commands/*.md file is the whole artifact.
+
+## Team-share state (2026-10-15)
+
+- **Three public-ish repos:** workato-agentic-kit (mechanics), workato-dev-kb
+  (KB library: pipeline + public docs corpus, NOT the brain), knowledge-corpus
+  (the brain's authored knowledge layer, weekly swept export via
+  knowledge-export.sh — deny-listed dirs leave EXPORT-STUB.md skeletons).
+- **kit install order for a teammate:** kit (onboard/install/verify) → dev-kb
+  installer → clone knowledge-corpus INTO ~/.claude/knowledge (seed) → first
+  session. install.sh preserves an existing INDEX.md.
+- **config.sh leak fixed:** was git-tracked with real workspace IDs in the
+  org repo; untracked + gitignored 2026-10-15 (90aec49). Tokens were always
+  keychain-only via onboard.sh (dev + prod profiles).
+- **personal-identity-templates/** ships the writing-voice skill template +
+  people-file template; personal content is gitignored everywhere and
+  sweep-blocked in every export.
+- **docs:** 11-capabilities.md + 10-knowledge-getting-started.md published to
+  BTI Confluence (2956034461, 2956034485); docs-sync is NIGHTLY 06:52 now
+  (cron d4b9fad7, was weekly Tue). New pages need Josh go; updates autonomous.
+- **publish trap:** the main session's Atlassian MCP exposes Jira tools only;
+  Confluence read/publish works in HEADLESS sessions (claude -p with
+  --allowedTools). Fleet-style dispatch is the publish path.
+- **history rewrite (2026-10-15, Josh-approved):** people/, voice content,
+  slack-posts.jsonl purged from all josh-knowledge history via git-filter-repo
+  (backup: /tmp/josh-knowledge-backup.bundle); knowledge-corpus reset to a
+  single clean commit (leaked extract files purged; backup bundle in /tmp).
+  Teammates with old clones must re-clone.
+
+## Push identity guard (hook 15, 2026-10-20)
+
+- **Hook 15 LIVE in workato-guardrails (accepted dreamer proposal 2026-10-10
+  push-identity-guard, built dev-side 2026-10-20):** warn-only same-name
+  live-recipe warning on every `recipe_builder_push` (dev+prod). On a
+  successful push it recipe_gets the pushed recipe (name = the join key),
+  makes ONE `recipe_list` call for the pushed recipe's folder
+  (`running=true, per_page=100`, cached 5 min per server:folder), and
+  annotates the result naming BOTH recipe_ids + URLs when another RUNNING
+  recipe carries the same name (BSYS-29488 two-copy divergence class: the
+  name is the join key and the name is a lie). NEVER denies — hot-swap
+  staging copies and promotion renames create transient same-name live
+  recipes legitimately.
+- **Scope decision:** the proposal said "one recipe_list call, workspace-wide"
+  — impossible here: dev workspace = 6,284 recipes / 3,183 running,
+  `recipe_list` has NO name filter, and per_page>100 422s. Guard is
+  FOLDER-scoped (where staging twins and promotion copies are born); a
+  cross-folder same-name pair would NOT fire it. Recorded in the hook comment.
+- **Test-sandbox discovery:** the `claude plugin test` engine serves NO
+  `$.mcp` noun at all (`$.mcp` is undefined) — mcp-backed hook paths cannot
+  be stubbed in harness tests; they fail via the hook's own try/catch. The
+  warn path is proven instead by `tests/push-identity-driver.mjs`: a node
+  driver that loads the REAL register.js, fires the REAL tool.call chain, and
+  feeds REAL captured MCP payloads (fixtures recipe_get_A.json +
+  recipe_list_folder.json from a live duplicate pair). Run:
+  `node tests/push-identity-driver.mjs`. Harness tests keep the never-block /
+  graceful-degrade contract; 45/45 green.
+- **recipe_list markdown rows carry pipes INSIDE names** ("REC | HR Genie | …")
+  and inside descriptions — never parse by column position; take the id from
+  the leading cell, cut the name field at the Running flag cell, and match the
+  pushed name leading-anchored at a cell boundary.
+- **CLI-start validation errors are per-field:** starting a triggerless
+  recipe fails `provider/name can't be blank`; with a trigger but unset
+  fields, `Time unit can't be blank` — set trigger inputs via
+  recipe_builder_set_input_field before start. `wt recipes delete <id>` works
+  and 404-confirmed both probes gone.
+- **Live probes:** real duplicate pair 83197137 (stopped) + 83197138 (running),
+  both "TEST push-identity dup probe" in folder 35835951, created + started +
+  deleted for the verification (manifest exemption: test probe). Driver
+  results: CASE1 WARNED naming both ids no-deny; CASE2 one recipe_list across
+  two pushes (cache); CASE3 unique-name no warning; CASE4 mcp-down push
+  passes. Proposal file NOT touched (no proposal-decide.py, status unchanged).
+
+## Hook 16 josh-model briefing (2026-10-23) — two NEW engine traps
+
+- **ONE bare `on('prompt.submit', ...)` per module, validator-enforced.** A
+  second registration without a matcher fails the WHOLE module at load
+  ("on(...) is registered twice without a matcher") and takes all plugin tests
+  down with it. Hook 16 (josh-model first-prompt briefing) lives INSIDE hook
+  5's existing prompt.submit handler; never add a second bare one.
+- **A stubbed prompt.submit answer may not carry both `drop` and `context`**
+  ("returned a drop that carries a context" skips the test's hook). To assert
+  on injected context, capture `e.context` in a closure inside the stub and
+  return only `{ drop: 'captured' }`.
+- Positive-path proof for hooks needing `$.process` (absent from the test
+  sandbox, same as `$.mcp`): self-staging node driver pattern —
+  tests/josh-model-driver.mjs copies the real register.js to a temp .mjs,
+  mocks `$.process.run`, fires the real prompt.submit chain (first-prompt
+  inject, once-per-session sentinel, empty-output no-op, throw = fail-open).
+- Once-per-session state needs NO /tmp sentinel: `register()` runs per
+  session, so a register-scoped `let briefed = false` IS the sentinel.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Claude Code mods](domains/claude-code-mods.md) — building/installing/rolling back Claude Code mods (v2.1.287+); Josh's workato-guardrails **v1.0.0** plugin — 15 hooks (**hook 15 push identity guard 2026-10-20: warn-only same-name live-recipe warning on recipe_builder_push, folder-scoped one-call recipe_list cached 5 min, never blocks; test engine has no $.mcp noun — warn path proven via node driver on real payloads**) (redaction, prod-write audit, story-points gate, URL linker, standards injection, status band, datapill warning, writeback nudge, push risk scorer, build ledger, recipe snapshots, **prod-write confirm gate for CLI/WT/curl/Orca**) in ~/mods via local marketplace josh-mods; 42/42 tests; JSON-escape regex trap; local marketplaces load in place; + **session-budget v0.1.0 (2026-10-11): cold-start guardrail — $/context band, warn toast, hard Stop block that forces the handoff skill + closeout row in knowledge/handoffs/session-closeouts.jsonl (env knobs + SESSION_BUDGET_FORCE kill switch; 6/6 tests; engine gotchas: literal env names, top-level function helpers, typed atoms, test engine has no $.fs)**; + **brain-guard node:fs fix (2026-10-11): hooks modules may import ONLY relative files + 'claude-code' — voices/INDEX reads via $.fs.read lazy, writer via $.env.get; $ doesn't exist at register time; no process noun in test engine**; + grill-gate skill 2026-10-07 (planning-phase grill w/ self-answer + recommended-answer contract, global CLAUDE.md rule); + insights-report analysis 2026-10-08 (4 triage findings: preflight-prod checklist, lint hook, unverified-items line, prior-art rule — verdict via /triage — ALL 4 BUILT 2026-10-08: hook13 pre-flight prompt, lint-changed.py PostToolUse hook, unverified-items rule in CLAUDE.md, prior-art sweep in grill-gate+playbook; + replay gym BUILT (gym.py, 5 nightly harness assertions, fleet job com.josh.fleet.gym 00:15); plist-shell-write-mangle investigation CLOSED 2026-10-08 (suspects cleared: brain-guard annotate-only, lint-changed read-only; canaries clean — in file); + **2026-10-10 build-ledger attribution fix: destructive AIRO mutations (data_table_delete/truncate, kb_delete, etc.) now extract asset id from tool_input pre-dispatch (extractAsset) + session env fallback → ledger rows carry asset_id/asset_field/asset_kind/tool_use_id; cache-vs-~/mods divergence caught (cache had lost the counter fix) — rule: patch ~/mods, cp to cache, `claude plugin test`, diff after plugin updates (42/42 green, in file)**; + **/reload-session global slash command (2026-10-14): one-command mid-session state re-absorb WITHOUT losing conversation history — parallel re-read of josh-now / newest handoffs / MEMORY index / INDEX.md / MCP health / claims-sweep, verdict-first delta report, honestly lists non-refreshables (CLAUDE.md, MCP tool schemas, skill list, hooks = restart-only); lives at ~/.claude/commands/reload-session.md (personal slash command, no hooks/settings changes); verified E2E via headless `claude -p "/reload-session"` probe — that probe pattern doubles as the cheap live-verification loop for any slash command**
+
+## THE `process` GLOBAL DOES NOT EXIST in the hook runtime (live-proven 2026-10-26)
+
+- Hook 16 (josh-model briefing) shipped 2026-10-23 with `process.env.HOME` in
+  the prompt path. It silently never fired for 3 days — fail-open catch made a
+  dead hook indistinguishable from a quiet one. Diag instrumentation caught
+  `process is not defined` in ONE headless probe (`claude -p` fires the real
+  engine + real plugin cache — fastest live hook test there is).
+- **Fix: `await $.env.get('HOME')`** — and the mod validator forbids reading
+  `$.env` as a VALUE (no `$.env && $.env.get` guard); call it bare inside a
+  try/catch and let a missing noun fail open.
+- **Latent class swept same day:** five other `process.env.HOME` sites
+  (ledgerChurn, /builds, /cockpit full, ui.render ledger tab,
+  /promotion-ready) had been silently degrading inside their try/catches —
+  /builds would have claimed "ledger is empty" forever. All switched to
+  $.env.get, 48/48 green.
+- **Design lesson for fail-open hooks: ship a one-line diag file on first
+  activation** (stage markers + sanitized exception to /tmp), verify the first
+  live fire, then remove the diag. Fail-open without a diag channel is a
+  silent-death machine.
+- Sandbox note: the plugin test engine HAS `process` (Node) and LACKS `$.env`;
+  real engine is the reverse. Tests for env-dependent hooks must live in a
+  driver that mocks `$.env`.

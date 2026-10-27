@@ -25,3 +25,10 @@ Note the fresh unparented `Copy of get_drift_report` (82926620) — likely a
 scratch copy; ask Josh whether it should be deleted or promoted over 74717532.
 Ledger coverage: Job 4 of [[workato-watchdog]] now names this project in scope
 explicitly (agent def amended 2026-10-09), BSYS-29462 tracks it.
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Drift-fix project](projects/drift-fix-project.md) — [DRIFT FIX] Workato project 10593549 inventory (7 recipes, externally maintained, zero ledger history); Job 4 scope amended (BSYS-29462); **+ 2026-10-21 overnight incident verified live: table 157379 deleted ~01:18, [LOG] DriftFix_Apply_Log recreated as 163016 (folder 35701677), 3/4 consumers re-pointed + 2 new recipes + Drift Fix Genie restarted 23:49 — all zero-ledger; get_fix_proposals 83074639 still fails (dead 157379 + query_id→snowflake_query_id rename = plain re-point insufficient); attribution UNPROVEN; findings projects/drift-fix/bsys-29828-overnight-incident-findings-2026-10-21.md**

@@ -42,6 +42,17 @@ claims/specs CLEAN, domains/cortex CLEAN-WITH-NOTES, projects NEEDS-WORK→fixed
 + gitignored 2026-10-15 (commit 08daea0); **they remain in git history** until
 a purge (force-push rewrite, Josh-gated, not done).
 
+## Stubs (2026-10-15, Josh)
+
+Excluded dirs keep their SKELETON in the export: 32 `EXPORT-STUB.md` stubs
+(dir name + why-not-exported + "the weekly exporter keeps this empty; policy
+changes populate here"). The claude-projects-extract dir is denied WHOLESALE —
+a third extract file (org-wide-projects-joined, plus dan-org-emails.json and
+cs-org-dan-kennedy CSVs) landed in the source tree the same afternoon and two
+of them were briefly pushed (commit efb93ad) before the sweep caught the
+third. Sweeps now exclude .git plumbing; rsync exclude anchoring fixed;
+export failures no longer chain into commits.
+
 ## Rules
 
 - The export is ONE-WAY: team repo never merges back into the brain.

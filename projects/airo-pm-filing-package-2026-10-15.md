@@ -119,6 +119,13 @@ S3 = ergonomics/efficiency.
   pattern shows this team designs well for agent clients — tool-search would
   compound that.
 
+**LIVE-VERIFIED 2026-10-15 (second session, jira-autotriage matrix):** all 12 keys
+resolve via JQL — correct summaries, Bug/Story types as specced, assignee Josh,
+all Backlog, points correct (S1=3/High, S2=2/Medium, S3=1/Low, stories 2pt),
+labels `AI-Enablement, MCP, airo-mcp` + S-tier. Filing packet is accurate; nothing
+outstanding on our side. Remaining action is Josh's: Grace's routing confirmation,
+then upstream filing.
+
 **FILED 2026-10-15 (BSYS, assigned to Josh, S1=High/S2=Medium/S3=Low, points S1=3/S2=2/S3=1, stories 2pt):**
 DM #1→BSYS-29708 · #2→BSYS-29702 · #3→BSYS-29703 · #4→BSYS-29709 · #5→BSYS-29710 · #6→BSYS-29704 · #7→BSYS-29711 · #8→BSYS-29712 · #9→BSYS-29705 · #10→BSYS-29713 · #11→BSYS-29706 · #12→BSYS-29707 (thank-you posted as comment there). Dissent verdict STANDS (thread `airo-pm-filing-2026-10-15` in `dreams/bus/dissenter.jsonl`); amendments applied: Josh-assignee, package point scheme, #9 item (b) flagged reported-not-canonized, #6 rephrased as job-runtime persistence, #2 cites BSYS-29330 comment 1132095, #7 cites the canon entry. No parent epic exists for AIRO-MCP platform feedback — proposed, not created.
 

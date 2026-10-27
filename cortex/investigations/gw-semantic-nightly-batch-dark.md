@@ -100,3 +100,65 @@ alert-suppression ONLY — nothing in it pauses or even touches the nightly batc
 - What changed the gateway runtime connector schema after 00:45 PT Oct 14 (release? cache?) was
   not established — no connector-release read used.
 - Nothing was stopped, started, edited, or written in Workato. Read-only held throughout.
+# AUTOPSY: gw_semantic nightly batch dark since 2026-10-11 rebuild wave
+# Date: 2026-10-15 | Investigator: cortex probe (read-only) | DEV folder 35404884
+# Scope: 9 clock-triggered recipes running=true, last_run_at frozen 10-11T05:46-06:17Z
+
+
+---
+
+## CONFIRMATION PROBE — second pass, 2026-10-15 ~18:0x PT (fresh live evidence)
+
+The 3-line header block directly above is this probe's file-initialization artifact; this
+section is the probe's actual content. It re-pulled ALL 9 named recipes live (AIRO job_list,
+recipe_get) and CONFIRMS the first-pass verdict: the batch is alive, every one of the 9 fired
+after the 2026-10-11 rebuild wave, and 8 of 9 fired TODAY (10-15).
+
+| Recipe | Cadence (from trigger config / job spacing) | Latest job (PT) | Result |
+| --- | --- | --- | --- |
+| 82963931 nightly_conformance | daily 07:13 | 2026-10-15 07:13 (j-Abxa6E4g-YcWsRg-CD) | succeeded; also 10-12, 10-13, 10-14 |
+| 82963934 candidate_triage | daily 06:00 PT | 2026-10-15 06:00 (j-AbxXrrwr-WDBJMx-CD) | succeeded; also 10-12, 10-13, 10-14 |
+| 82964058 paraphrase_cluster | ~nightly 00:2x | 2026-10-15 00:25 (j-AbxPXEKw-pnazGo-CD) | succeeded; also 10-12, 10-14 |
+| 82964024 error_hint_author | ~nightly 00:2x | 2026-10-15 00:25 (j-AbxPWxpc-hEkxwA-CD) | succeeded; also 10-12, 10-14 |
+| 82893591 responder_stall_watch | hourly | 2026-10-15 17:53 (j-AbxnJWkG-FxLGFe-CD) | succeeded; 198/198 green lifetime |
+| 82803096 usage_digest | daily 14:00 PT | 2026-10-15 14:00 (j-AbxgYwFB-CmaeDc-CD) | succeeded (17 ok / 4 failed lifetime, recent all green) |
+| 82888690 weekly_intelligence_digest | WEEKLY Monday 08:00 PT | 2026-10-12 08:00 (j-Abw3da9G-FE4dAK-CD) | succeeded — ON CADENCE; next fire Mon 10-19, silence since Mon is expected |
+| 82888287 | hourly | 2026-10-15 17:30 (j-AbxmwBnA-QhHEL8-CD) | succeeded; 209/212 green lifetime |
+| 82889357 usage_metrics_rollup_v2 | hourly | 2026-10-15 17:42 (j-AbxnAwM9-aap3Qd-CD) | succeeded; 202/202 green lifetime |
+
+### Answers to the 4 investigation questions
+
+1. **Shared stop cause?** None exists to share — zero of the 9 are stopped. All report
+   running=true AND have succeeded jobs on/after 10-12. There is no trigger-level failure,
+   no scheduler stall, no missed-fire gap beyond 82888690's designed weekly cadence.
+2. **Was the 10-11 rebuild wave (BSYS-29656) the mechanism?** Only as an evidence artifact,
+   not a runtime one. The wave EDITED these recipes 10-11 01:46-02:17 EDT (= 05:46-06:17Z),
+   and the "frozen last_run_at" figures are those edit timestamps (`updated_at`) misread as
+   run activity. Scheduler next-fire state was NOT reset: 82963931 fired 10-12 10:43 PT
+   (anchor shift from the post-edit restart) then resumed daily 07:13; all others kept their
+   cadences unbroken through the wave.
+3. **Same failure class as canary 82964017 (BSYS-29560)?** NO. The canary is genuinely
+   stopped (`stop_cause=trigger_errors_limit`, trigger-level silent death, 14/14 succeeded
+   jobs, connector output-schema drift). The batch has no stop event at all. Two different
+   worlds: one real stopped recipe, one stale-timestamp false alarm. Do not merge the cards.
+4. **What the watchdog sweep did NOT see:** (a) actual job traces — its "last_run" source is
+   recipe metadata, not job history; (b) cadence semantics — weekly 82888690 and ~nightly
+   82964024/82964058 legitimately go 24h-7d between fires, so an updated_at-as-last_run
+   misread is invisible precisely on the slow-cadence recipes; (c) interval configs and
+   version history are not in the sweep's evidence at all (it never pulled recipe_get).
+
+### VERDICT
+
+**Multi-symptom, single-cause — and the cause is in the EVIDENCE PIPELINE, not the fleet.**
+The gw_semantic nightly batch is not dark: 9/9 recipes fired after the 10-11 rebuild wave,
+8/9 fired today. The "frozen last_run_at 10-11T05:46-06:17Z" is the rebuild wave's edit
+timestamps (`updated_at`) being read as run activity by whatever produced the alarm.
+Suspected mechanism: sweep/digest source reads recipe metadata instead of job traces.
+Minimal live check to confirm: for any one of the 9 (e.g. 82963931), compare
+recipe_list/recipe_get `updated_at` against job_list newest job — if the alarm's timestamp
+equals `updated_at` while a newer succeeded job exists, the pipeline misreads the field.
+(Already true on this pass: alarm said 05:46Z = the recipe's 01:46 EDT edit time; newest
+job is 10-15 07:13 PT.) The only REAL defect in the folder remains canary 82964017's
+trigger_errors_limit stop-loop (BSYS-29560 / BSYS-29656 recurrence) — tracked separately.
+
+Read-only held: no recipe, lifecycle state, or file other than this findings file was touched.

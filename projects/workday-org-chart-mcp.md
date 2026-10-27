@@ -92,3 +92,10 @@ errors), whether the Sep 5 skill update changed anything else.
 - [MCP Monday: Outlook Calendar and Zoom Meetings Are Live](../../kb-corpus/changelog/mcp-monday-outlook-calendar-and-zoom-meetings.md)
 - [MCP Monday: Scheduling, Reporting, and Data, Handled](../../kb-corpus/changelog/mcp-monday-scheduling-reporting-and-data-handled.md)
 <!-- kb-bridges:end -->
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Workday Org Chart MCP](projects/workday-org-chart-mcp.md) — snapshot-backed org-chart MCP tool (skill 74594114 + reader/refresh/builder 74597697/74597493/74766125 + 2 version-pinned tables, project 13683566); absorbed to canonical repo ~/orca/projects/org-chart 2026-10-08 (handoff ORCA-CLAUDE-CODE-HANDOFF.md); NO PRODUCTION promotion standing rule; drift: async telemetry emitter to HR Genie func 78563374 not in original register

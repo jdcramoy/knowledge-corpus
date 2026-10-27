@@ -27,6 +27,11 @@ SCRIPTS = K / "scripts"
 LA = HOME / "Library" / "LaunchAgents"
 HARNESS_FIX = K / "harness-fix" / "queue.jsonl"
 HEARTBEAT = G / "heartbeat.jsonl"
+# test-noise digest accumulator (accepted proposal 2026-10-12-typed-sweep-
+# findings, reduced form): workato-health routes flagged recipes' failure
+# findings here instead of the realtime triage/bus page; this job renders it
+# nightly so the downgrade stays a digest, not a suppression
+DIGEST_DIR = K / "workato-health" / "digest"
 
 # job name -> heartbeat aliases (a job is "seen" if any alias matches a
 # heartbeat job name). Canonical name = the FLEET job (plist suffix); the
@@ -38,9 +43,13 @@ HEARTBEAT = G / "heartbeat.jsonl"
 # NOT merged on live evidence: "health" (workato-health.py, hourly, heartbeats
 # as "workato-health") and "harness-health" (run-job.sh job) are TWO DISTINCT
 # jobs — binding "health" to its true heartbeat name instead of merging the
-# pair removes the "-health" suffix cross-masking. Known residual: the
-# endswith matcher still lets "dreamer" claim "project-dreamer" rows (a real
-# second job); fixing that needs the matcher, not the alias table.
+# pair removes the "-health" suffix cross-masking.
+# Matcher (2026-10-18): EXACT alias match only. The old fuzzy endswith/
+# startswith forms cross-claimed rows between distinct jobs — "dreamer"
+# claimed "project-dreamer" heartbeats, "canary" claimed "command-canary"
+# (a hook script, masking real canary staleness), "cost-governor" claimed
+# the one-off "cost-governor-build" session row. Every heartbeat spelling a
+# job needs is now an explicit alias; unknown names never satisfy a check.
 ALIASES = {
     "dreamer": ["dreamer", "harness-dreamer"],
     "project-dreamer": ["project-dreamer"],
@@ -48,13 +57,15 @@ ALIASES = {
     "harness-health": ["harness-health"],
     "watchdog": ["watchdog", "workato-watchdog"],
     "architect": ["architect"],
-    "ops-autopsy": ["autopsy"], "ops-visibility": ["ops-visibility"],
+    "ops-autopsy": ["ops-autopsy", "autopsy"], "ops-visibility": ["ops-visibility"],
     "jira-triage": ["jira-triage", "jira-triage-fleet"],
     "brief": ["brief", "morning-brief"], "loadout": ["loadout"],
     "minutes": ["minutes"], "corpus": ["corpus"], "docs-watch": ["docs-watch"],
     "backup": ["backup", "harness-backup"],
     "gym": ["gym", "replay-gym"], "healer": ["healer"],
     "cortex": ["cortex"], "gardener": ["gardener", "brain-gardener"],
+    "regression": ["regression", "regression-nightly"],
+    "wave3-nightly": ["wave3-nightly"],
 }
 STALE_HOURS = 26.0
 
@@ -159,9 +170,10 @@ def check_fleet(findings):
         aliases = ALIASES.get(suffix, [suffix])
         seen = None
         for j, t in hb.items():
-            # boundary-aware: "health" must not match "harness-health" and
-            # vice versa (2026-10-11 cross-masking fix)
-            if any(j == a or j.endswith("-" + a) or j.startswith(a + "-") for a in aliases):
+            # exact-only: fuzzy endswith/startswith cross-claimed rows between
+            # distinct jobs (dreamer vs project-dreamer, canary vs
+            # command-canary — 2026-10-18 fix); spellings live in ALIASES
+            if any(j == a for a in aliases):
                 if seen is None or t > seen:
                     seen = t
         if seen is None:
@@ -202,6 +214,32 @@ ARTIFACTS = {
     "dreamer":        ("dreams/2*.md", 30),
     "project-dreamer": ("dreams/project/*.md", 30),
 }
+
+
+def test_noise_digest():
+    """Last-7-day counts from the test-noise digest accumulator.
+
+    Returns (rows, days_covered) where rows is [(recipe_id, name, count)]
+    sorted by count desc. Read-only; missing dir -> ([], 0).
+    """
+    cutoff = (now_utc() - dt.timedelta(days=7)).strftime("%Y-%m-%d")
+    counts = {}
+    days = 0
+    if DIGEST_DIR.is_dir():
+        for path in sorted(DIGEST_DIR.glob("*.jsonl")):
+            if path.stem[:10] < cutoff:
+                continue
+            days += 1
+            for r in read_jsonl(path):
+                rid = str(r.get("id", "?"))
+                slot = counts.setdefault(rid, {"name": str(r.get("name", ""))[:50],
+                                               "count": 0,
+                                               "last": ""})
+                slot["count"] += 1
+                if str(r.get("ts", "")) > slot["last"]:
+                    slot["last"] = str(r.get("ts", ""))
+    rows = sorted(counts.items(), key=lambda kv: (-kv[1]["count"], kv[0]))
+    return rows, days
 
 
 def check_artifacts(findings):
@@ -416,7 +454,10 @@ def check_ledger_integrity(findings):
 # made the cortex --add-dir fix silently not apply.
 CANONICAL_RUNNER = Path("~/Documents/agentic-workato-kit/bin/fleet/run-job.sh")
 # jobs that run their script directly instead of via run-job.sh
-ALLOWED_DIRECT = {"health", "ops-visibility"}
+# watchdog-liveness (2026-10-23): intentionally direct — its whole contract is
+# its OWN alarm heartbeat (watchdog-liveness-ALARM rows), not the run-job
+# heartbeat; routing it through the runner would double the heartbeat path.
+ALLOWED_DIRECT = {"health", "ops-visibility", "watchdog-liveness"}
 
 
 # Ledger-shrink alarm: the Oct-11 heartbeat wipe (1402 rows -> 448, a writer
@@ -652,6 +693,12 @@ def append_findings(findings):
 
 
 def main():
+    import argparse
+    # --help/-h gate (2026-10-16): bare main() wrote a heartbeat row (and
+    # report/queue rows on findings) even on a naive --help.
+    ap = argparse.ArgumentParser(
+        description="harness-health sweep (bare run = the real sweep)")
+    ap.parse_args()
     findings = []
     jobs = check_fleet(findings)
     runners = check_runner_paths(findings)
@@ -663,6 +710,7 @@ def main():
     parity = check_queue_outcome_parity(findings)
     defects = check_known_defects(findings)
     art_checked, art_unmapped = check_artifacts(findings)
+    digest_rows, digest_days = test_noise_digest()
     new = append_findings(findings)
 
     day = now_utc().strftime("%Y-%m-%d")
@@ -725,6 +773,23 @@ def main():
     L.append("")
     for name, status in defects:
         L.append(f"- {name}: **{status}**")
+    L.append("")
+    L.append("## Test-noise digest (last 7 days)")
+    L.append("")
+    if digest_rows:
+        L.append(f"{sum(r[1]['count'] for r in digest_rows)} digest-routed failure(s) "
+                 f"across {len(digest_rows)} recipe(s), {digest_days} day-file(s) — "
+                 f"flagged via knowledge/workato-health-scope-flags.json "
+                 f"(proposal 2026-10-12-typed-sweep-findings). Flag expiry is the "
+                 f"un-mute path; the flag file's 'until' dates govern.")
+        L.append("")
+        L.append("| recipe | name | digest-routed failures | last |")
+        L.append("|---|---|---|---|")
+        for rid, slot in digest_rows:
+            safe_name = slot["name"].replace("|", "/")
+            L.append(f"| {rid} | {safe_name} | {slot['count']} | {slot['last']} |")
+    else:
+        L.append("No digest-routed test-noise failures in the last 7 days.")
     L.append("")
     if findings:
         L.append("## Findings this run")

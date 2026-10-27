@@ -3163,3 +3163,375 @@ All five BSYS-29560..29564 built/verified in dev same-session. Canonical repo co
 - Docs API gotcha: indices are UTF-16 code units — len(str) undercounts emoji by 1 unit each. Compute with len(s.encode('utf-16-le'))//2.
 - Credential location gotcha: the gateway OAuth token is NOT under "Claude Code-credentials" mcpOAuth (that map holds other servers only); a stale dev-era item sits under acct "google-workspace-semantic-mcp-dev|c2aadbba46c1b44e" (Claude.ai-scoped, expired, useless). After a fresh /mcp auth, easiest path is just use the connected MCP tools, not raw API.
 - Announcement doc proof: 1ckYOwZUT_-nuKdV-bS-E1vFpk5KkArFR2YhMk4fw10M (receipts 609864b8… create, ba1104aaf… batchUpdate, 16 styled requests, all verified in read-back).
+
+## Docs creation via semantic MCP (2026-10-16)
+- `docs.documents.batchUpdate@v1` typed ops: insert_text max 3000 chars/op, 25 ops/call, and the REVIEWED MUTATION BODY has a 7,500-byte transport budget (batch by ~2 chunks of 2,900 chars).
+- The semantic layer STRIPS whitespace at string-fact edges: leading/trailing "\n\n" separators are silently dropped, and a whitespace-only `replace_text` becomes empty (sentinel replace deleted the marker, inserted nothing). Fix seams with mid-string `replace_all_text` (e.g. "end to end.Three" → "end to end.\n\nThree") — newlines mid-string DO insert real paragraph breaks.
+- Empty new doc: body end index 2; max valid insertText index is (end - 1). Insert at end-1 to append; batchUpdate failures are ATOMIC 400s (nothing applies).
+- Long-doc flow that works: create (title only) → compute cumulative indices → insert chunks with sentinel markers (SEAMX1/...) → replace_all_text sentinels with mid-string breaks → read back to verify seams.
+
+## Serving-truth audit + durable dashboard (2026-10-18)
+
+- Josh-requested audit: does the live server serve what the ledgers say? VERDICT: reconciled. Registry 147343 = 1,073 rows (paged to end via `wt dt query` continuation loop); routing surface = 1,085 tuples / 9 services (live catalog, generation 0cb45f67); reconciliation = registry + 13 discovery-only tuples (catalog 12 + workspace 1), ±1. Shard table holds 39 active shards = exactly the live manifest's shard keys.
+- Fleet audit: all 12 recipes running (gateway 10,108 jobs @ 98.6%; sync 1,653 @ 97.2%); conformance 8/8, 0 drifted.
+- ONE RED FOUND + FIXED LIVE: mutation-chain canary 82964017 had NO jobs since Oct 14 despite running=true (scheduler silently dead, flag lies). Fixed by stop→start via wt, then force-run (j-Abzz8gcD, succeeded; drill row ok=yes, zero residue). Lesson: running flag is NOT liveness proof — job recency is. Sentinel + harness sweep both flagged it; the recipe API did not.
+- DASHBOARD SHIPPED: `~/.claude/knowledge/scripts/gw_semantic_dashboard_snapshot.py` → ~/Documents/gw-semantic-dashboard/index.html (self-contained, colleague-facing, no asset IDs on board) + snapshots/*.json history. launchd com.josh.gw-semantic-dashboard daily 07:42. Palette validated (dataviz skill, light+dark).
+- SCRIPT GOTCHAS: `wt dt query --raw` returns positional `data` arrays, NOT `rows` (parse non-raw dict form); shard table column semantics are swapped (shard key arrives in either index_key or status); registry numeric ID 147343 works for CLI reads, 147339 does NOT (6-char numeric 400s — use UUID 9bdee34f-94e2-44ea-a736-053ecb325255).
+- Silence alert context: health monitor fired 🔇 06:02 UTC (zero events in 6h window) — weekend-quiet class, not breakage; last real gateway call Oct 17 04:45 PT.
+
+## Intent-crawl v2 status (2026-10-19)
+- 15-worker windowed backfill Sep 16 → Oct 17: 14/15 slices DONE; slice 0 (Sep 16-18) was mid-flight when the process died silently ~00:59 EDT Oct 19 (no FAILED line, DB write 56 min after last log — reads like machine sleep/kill). Relaunched same day, idempotent skip confirmed on the 14 done slices, slice 0 resumed from cursor.
+- Raw corpus (claude-intents-raw.db): 55,346 sessions / 33.76M messages — and the DB is 110 GB. Retention/compaction decision pending with Josh.
+- Phrase side lags the crawl: claude-phrases.db last built Oct 14, QA report Oct 16 (6,603 phrases: 4,032 SKIP / 2,456 REVIEW / 82 ADD w/ 13 shortlist / 33 GAP). Re-run extraction + QA after slice 0 lands.
+- Slice 0 pace: ~25 sessions per 5-60 min. Progress lines print every 25 sessions only.
+
+## Crawl closed (2026-10-19 evening)
+- ALL 15 slices DONE (slice 0 finished by itself: 56-session tail). Final corpus: 55,346 sessions / 34,396,084 messages. Surfaces: claude_code 40,964, cowork 14,303, office_agents/excel 57. Top service mixes: docs,drive,people 4,560 | people 3,579 | people,drive 2,945.
+- Josh ruled the corpus sufficient: crawl is CLOSED. Next step when wanted: phrase extraction + QA eval over the full v2 corpus (current QA report of 6,603 phrases predates the v2 distillation).
+- Raw DB stays at 110 GB until retention/compaction is ruled on.
+
+## Trigger linter + fleet receipts (bounded first moves, 2026-10-20)
+
+- **Trigger linter LIVE:** canonical repo `scripts/recipe-trigger-lint.mjs`
+  (`node scripts/recipe-trigger-lint.mjs --folder 35404884` or pass recipe IDs).
+  Read-only, wt raw-API (`/api/recipes/<id>`, josh-us), maxBuffer 64MB (folder
+  list embeds full code — default 1MB ENOBUFS'd). Validation experiment
+  MATCHED the proposal ground truth: exactly 82964017 FAILs (label "Minutes" +
+  contradictory DPL "Days" + orphaned trigger_at "00:09" — still persisted in
+  v13, recipe still stopped); healthy twin 82966998 PASSes. Two traps learned:
+  (1) `trigger_at` present-but-UNSET in visible_config_fields is COSMETIC
+  residue healthy recipes carry (82893071, 82830607, 82272892 — months stable)
+  → WARN, never FAIL; (2) structured picklist selections
+  `[{label:"Monday",value:"1"}]` agree with input `"1"` — compare VALUES, not
+  the label wrapper, or weekly schedules false-flag. Exit 1 reserved for the
+  silent-death class (FAIL only).
+- **Fleet receipts (local JSONL, dev-side):**
+  `~/.claude/knowledge/scripts/fleet-config-receipts.py` →
+  `~/.claude/knowledge/garden-reports/fleet-config-receipts.jsonl`. ONE
+  folder-list call per run carries version_no + full code (trigger hash =
+  sha256 of trigger block minus nested steps, sorted-keys canonical; step_count
+  = keyword+number nodes). Idempotent: appends only on delta or first sight
+  (run 2 after baseline: 0 rows). Diff-check prints ALERT lines with
+  before→after on any unattributed delta (proven via synthetic tamper on a
+  temp ledger copy). Data-table storage = later phase per proposal.
+- Still open per proposals: wiring the linter into the workato-development-
+  playbook push checklist; sentinel 82964161 schedule-freshness rule (layer b);
+  canary 82964017 itself is STILL BROKEN (v13 malformed config, stopped) — the
+  fix is P1's pending-Josh card, not this guard.
+
+## Training-data extraction complete (2026-10-20)
+- Gate 0 caught 3 classifier bugs before the full pass (AIRO-server false match, UUID-server naming, missing Slides vocabulary); full pass = 488s for 34.4M rows (overflow-page avoidance + selective reads).
+- Corpus-wide: 106,383 pairs / 2,950 distinct phrase-turn candidates (b0-full/candidates.db + top-candidates.json). Families: workato-per-app 73,639, claude-ai-native 23,271, workato-via-claude-ai 9,070, google-native 387, WORKATO-SEMANTIC 16 (fleet adoption of our server is pre-launch: the whole pitch in one number).
+- Services: slides 48,588 (46%!), sheets 26,467, drive 11,451, docs 11,036, calendar 5,066, gmail 3,534, people 225. Success 96% on foreign paths.
+- Users write LONG rich prompt-turns, not short phrases (every phrase session-unique, max 1 session per norm phrase) -> Phase D needs LLM distillation into canonical intent phrases (the promote-learning-agent judge flow), not frequency mining. Filter "[prompt diverged" crawler artifacts as phrase sources.
+- windowed argmax attribution + assent filter worked (1,132 assent-attributed, 2,350 no-user-turn tagged).
+
+## Fleet-language learning push COMPLETE (2026-10-20 evening)
+- Gate 3 passed (Josh read gate3-review.md); 2,602 events pushed to workspace_learning_events_v2 (UUID 7a6acae6-9604-4147-add6-ef2d5cca1425) via wt dt create-record (BARE record JSON, NOT {"data":...} wrapper — wrapper 400s), 0 failures, read-back verified via --where stage=PARKED_pending_canary.
+- create-record event_id: table auto-assigns; my numeric event_id went in as string. Fingerprints = sha256(intent)[:16] for dedupe.
+- wt dt query --where 'col=val' needs no quotes around values; --order '$created_at' did NOT sort (rows came back insertion-scattered); use --where filters for read-back.
+- Landing order in table: PARKED rows are DEAD-END input for the curate->judge/dissenter/resolver->canary->registry pipeline. Registry untouched; only the flywheel writes it.
+- 122 GAPs = capability roadmap backlog (map out org chart 80occ leads). Canary-first queue: foreign-path failures ("create a document" 46% on foreign paths).
+
+## Learning-loop check + v2 archive (2026-10-23)
+- Jury verdict on the pipeline: WORKING (34 phrase_seeds promoted, 34 pending, 492 retired with full judge/dissenter/resolver audit notes) — but those are the Oct 12 v1-miner batch. Our Oct 20 push of 2,601 phrase_seed candidates: still ALL parked, zero adjudicated.
+- ROOT CAUSE: promote recipe 82792961's phrase_seed read = first 1,000 rows, NO order, NO pagination (selection_correction read one step up HAS order_direction desc). Our rows sit past position 1,000 -> invisible to the docket (today's trace: parked_seen 8, docket_count 0). FIX (needs Josh go, hot-swap protocol): add review_status=parked filter to the phrase_seed get_records step.
+- CRITICAL TABLE CORRECTION: the LIVE events feed is workspace_learning_events_v3 (155508, UUID 8693bbe5), NOT v2 (155490) — the E3 roadmap doc named v2, superseded same day. Our 2,602-row push went into v2 = dead table (harmless: nominations only). Re-ingest to the jury went via the CORRECT path: scripts/jury-backlog-ingest.mjs --report (2,601 inserted, 1 dupe, 0 fail).
+- v2 table ARCHIVED per Josh: renamed 'zArchive | DEPRECATED workspace_learning_events_v2...' + moved to folder 35404887 after a zero-live-reader sweep (emitter 82792008 + curate 82792466 reference ONLY 155508). Manifest 371108 verified + mirrored.
+- wt traps: /api/recipes?folder_id= not honored (use per-recipe fetch); data-tables API select with 'updated_at' = FIELD_NOT_FOUND (candidate tables have no updated_at col exposed); --order '$created_at' silently does not sort.
+
+## Promoter hot-swap fix LIVE (2026-10-23 1:53 PM EDT)
+- Josh go received; recipe 82792961 v31: phrase_seed get_records (root[1]) now carries review_status=parked filter (mirrors the coverage_gap lane's pattern). Stop -> PUT -> start clean; running=True; scheduled 15-min trigger FIRED on cadence post-restart (j-Ac6ozhMB, 10:53 PT) — no reset-trigger needed this time.
+- First post-fix run: 90s (vs 2s stale spins), docket built FROM our mined rows (parked-7866fbad6b53 class, park_reason mined-review, [url]-scrubbed examples), real judge/dissenter/resolver verdicts produced.
+- Backlog drain: 2,601 at 25 rounds/15min ≈ 26h. Promoted seeds -> pending -> registry (147343) via the mechanical seed branch automatically.
+- Manifest 371120 (promoter + deps: OpenAI connection, registry 147343, candidates 155485) verified in-page; mirror at manifests/mining-session-promoter-hot-swap-fix.manifest.json.
+- HOT-SWAP NOTE: this push did NOT kill the scheduled trigger (contradicts the 2026-10-07 recurrence trap) — verify anyway every time; the 10:53 scheduled fire was the proof.
+
+## Promoter hot-swap v37 — the fix that stuck (2026-10-24 01:24 PT)
+- THREE issues stacked: (1) phrase_seed read unordered-first-1000 (original window bug; my parked filter fixed the docket); (2) the gate Ruby JSON.parses its inputs, but Workato custom-code MAY pass pill outputs as already-deserialized Ruby objects — shape-agnostic parsing now; (3) THE REAL KILLER: code_input.data keys must be registered in the step's extended_input_schema (the form-schema-builder properties list) or the runtime silently drops them — input.fetch raised KeyError -> rescue -> seed_config=''. Register in extended_input_schema.properties, NOT just code_input.schema.
+- Workato step numbering: ZERO-BASED and counts NESTED children in DFS order; flat top-level renumbering fails start validation ("number N is out of sequence") — renumber via DFS walk.
+- Start rejects INVALID pills at start time (good: fail-closed before runtime); double-encoded pill (json.dumps(json.dumps(...))) = "Invalid JSON value (expected object)".
+- force-run route: `wt recipes force-run <id>` (NOT POST /jobs — API not found).
+- VERIFIED post-fix: gate armed (seed_config='enabled', promote_list non-empty), jury docketing mined rows, fail-closed verdicts, registry dedupe holding (re-promoting an existing phrase inserts nothing).
+- Registry at 1,073; growth expected as the jury drains the backlog (25/15min).
+
+## Drain results v38 (2026-10-24 01:45 PT)
+- JURY_BUDGET 25->150 + seed cap 150 (v38, hot-swapped clean, traffic-earned lane untouched). One 8-min run adjudicated ~600 rows.
+- Status now: 2,442 retired / 644 parked / 186 promoted / 34 pending / 15 linter_rejected.
+- ALL 186 promoted seeds were ALREADY registry intents — dedupe-marked, ZERO inserts needed, registry steady at 1,073. The mechanical branch's dedupe (registry lookup before insert) verified live.
+- Honest yield: the mined corpus's surviving phrases are already served (registry lineage shares the miner). New-phrase yield is in the GAP backlog (122), not paraphrase rows. The exercise's durable value = loop proven at scale + audit trail + gap report.
+
+### DST audit verdict (2026-10-24, BSYS-29307 "DST-correct hours" residual)
+
+Full audit of computer 82888287 + digest 82888690 time math: **NO fixed-offset
+DST defect exists.** Both do all window/date math on the UTC axis end-to-end —
+event timestamps stored `+00:00` (verified in 155508), windows built with
+`Time.utc(...)` + ±86400 on UTC midnights, 3h slices pure UTC arithmetic, day
+keys = UTC dates, digest week keys = Date-parse of UTC day strings, digest
+trigger is `timezone: Pacific Time (US & Canada)` (Workato scheduler applies
+DST). Zero occurrences of `-07:00`/`-08:00` literals, 25200/28800 constants,
+`.hour` reads on shifted datetimes. UTC has no DST → Nov 2 cannot shift
+anything. Ruby simulation of the exact formulas at PDT (10-24), PST (11-03),
+and flip-day (11-01 09:00Z) instants: identical correct shapes
+(slice_hours_ok=true, t_day/UTC-midnight boundaries exact). Digest math at a
+Mon Nov 2 08:00 PST instant: today=2026-10-26-class date correct in both
+offsets (UTC date == PT date at 08:00 run). Live traces: computer
+j-Ac8XMCQ6-LkENA8-CD (today_start=2026-10-25T00:00:00+00:00, slices 3h apart),
+digest j-Ac3f3RzW-PRdkch-CD (week keys 2026-10-19/10-12/10-05, fired 08:00:05
+-07:00). NOTE the one semantic choice that remains: "today" = UTC calendar day,
+so PT-evening events (17:00-23:59 PT) bucket to the next UTC day — true today
+and unchanged by DST; switching day-keying to Pacific would be a product
+decision (breaks continuity of existing 157186 rows), not a bug fix.
+
+## BSYS-29651 residuals closed (2026-10-24, connector v122-v124, subagent session)
+
+- **Docs tabs-mode 400 — two-layer root cause.** (1) The registry
+  default_projection for docs.documents.get carried legacy `body`; Google
+  rejects any mask mixing legacy text-level fields (body, headers, footers,
+  footnotes) with includeTabsContent=true. (2) Swapping the mask alone
+  (v122: legacy->tabs) still returned NO tabs content — Google returned
+  metadata-only when explicit includeTabsContent=true rides with a tabs
+  mask. THE FIX (v123): `apply_tabs_mode_projection` runs ONCE before all
+  three read executors (execute_capability, execute_reviewed_operation,
+  execute_semantic_operation), swaps legacy->tabs in the shared contract,
+  and DROPS the flag — a mask referencing Document.tabs implicitly requests
+  tabs content (discovery doc verbatim). Live-proven: tabs[].documentTab.body
+  content returns; plain (flagless) reads unregressed.
+- **CRITICAL KEY-SHAPE TRAP:** `approved_query` returns CANONICAL keys
+  (include_tabs_content) — a helper reading provider keys
+  (includeTabsContent) silently no-ops the swap. The provider-key form only
+  exists INSIDE provider_request_components after canonical_argument_bindings
+  mapping. Any query-flag condition must check both shapes (or normalize).
+- **Calendar "stale post-delete cache" — NEVER A CACHE.** events.get after
+  events.delete returns the event because Google Calendar TRASH lingers
+  deleted events GET-able with status="cancelled" (provider semantics).
+  Our projections dropped `status`, so cancelled looked live. Fix = registry
+  data rows: "status" added to projection_json AND
+  response_contract_json.default_projection on ALL 5 calendar.events.get@v3
+  rows; force-ran sync 82272892 to materialize; serving checksum did NOT
+  rotate (it pins the routing index, not contracts) but policy lookup serves
+  the new projection immediately after sync. Live-proven: deleted -> cancelled,
+  live -> confirmed.
+- **Delete-of-deleted = idempotent-delete, connector-side (v124).** Provider
+  returns HTTP 410 "Resource has been deleted" on re-delete; the recipe's
+  ternary chain only maps 404/400, so 410 fell to opaque GOOGLE_PROVIDER_ERROR.
+  SDK FACT (source-read): inside after_error_response, if the block does NOT
+  call error(), its RETURN VALUE becomes the response — the raise is
+  suppressed. So DELETE+404/410 returns {'already_deleted' => true,
+  'provider_http_status' => code, 'provider_message' => ...} → clean
+  MUTATION_COMMITTED envelope, zero recipe edits. Non-DELETE 410s (calendar
+  sync-token expiry) still raise — different failure class.
+- Spec suite now 65/65 (10 new: 6 tabs mask, 4 idempotent delete). Canonical
+  repo commit c5c3936. Registry rows edited: 5 (calendar.events.get only) —
+  checksum-rotation law did NOT fire this time (routing index unchanged);
+  callers still re-fetch on SEMANTIC_CONTEXT_INVALID as usual.
+
+## TRAFFIC_CLASS HANDOFF CLOSED (2026-10-24/25, dev) — both Oct-11 UI handoffs done
+
+- **Handoff 2 (served tool descriptions): ALREADY DONE** — mcps-AbYzPeKh-QHG-CD's served
+  google_workspace + workspace_capabilities + workspace_policy_lookup descriptions
+  byte-match the code source (gws-semantic-export/MCP Server/*.mcp_server.json).
+  No edit needed; the "updated in code" description set had already been re-saved.
+- **Handoff 1 (traffic_class): DONE.** Column added to 155508 via Orca data-table
+  editor (workspace "Workato AHQ | AI"/Development verified FIRST per the session-state
+  trap; mouse input WORKED this session — clicks, dialog, typing all landed). 14,397
+  historical rows intact (pre-column rows read back null, not wiped). Column:
+  short-text optional, field c0dc5140-295f-4452-9e38-001f302bad6d, hint
+  "organic | uat_probe | bench | regression".
+- Recorder stamping SHIPPED to both emitters (82792008 + 82794778): normalize-step Ruby
+  derives traffic_class (harness principal 6b8d0e08… → uat_probe; request phrase match
+  probe/receipt invariant/closeout phrase/wire closeout phrase/uat → uat_probe, bench →
+  bench, regression/certification → regression; default organic) and outputs it through
+  the create-record mapping. Hot-swapped (stop → push → start); both running=True;
+  mask_data preserved. LIVE-PROVEN: real gateway read (calendar events list) and a
+  SEMANTIC_CONTEXT_INVALID rejection both landed rows stamped uat_probe.
+- **NEW AIRO/PLATFORM TRAPS (this session):**
+  - **Stale db_table action schema hides a NEW column even after remove/re-add is NOT
+    needed on the same step — the fix is remove_step + re-add_step at the same position
+    (fresh add_step fetches the current table schema), then re-map ALL fields; repair the
+    downstream None_None pill the renumber orphans (here: return event_id).** Editor-save
+    was NOT required (the BSYS-29505 handoff plan's "editor-save re-registration" concern
+    resolved by the rebuild path instead).
+  - **add_step with parent=1 on a monitor-nested recipe APPENDS after the return step**
+    (step-at-9 with StepAfterReturn) even on a 9-step recipe — move_step with
+    new_parent=<monitor block> then lands it correctly inside the try.
+  - **recipe_builder_set_input_field with a LIST value** (e.g. code_input.schema) rejects
+    v4 modes ("one-element list holding the item mode" escalation to per-key dicts) —
+    use PLAIN set_input_field with the array value (auto-serializes to JSON).
+  - **ruby() with bindings: binding values must be PILL EXPRESSIONS** (bare
+    execute_1['parameters']['x']); passing them as quoted strings mangles the formula
+    into _dp(...) INVALID RUBY FORMULA.
+  - **Manifest doctrine held:** created manifest 371521 via wt manifests create --file
+    mirroring UI shapes (anchor = project root folder 35404395, rows relative, state
+    omitted) — UI page verified (3 rows, zero Not-found), export COMPLETED, ZIP carries
+    table + both recipes with the new column/stamping. `wt manifests assets <id>` takes
+    a FOLDER id, not a manifest id — don't mis-verify.
+- BSYS-29505 → comment 1148299 + status UAT. Mission-control row recorded. Mirror:
+  manifests/BSYS-29505.manifest.json + BSYS-29505-traffic-class.evidence.zip.
+
+## BSYS-29950 ambient user timezone BUILT + UAT'd (2026-10-24, dev)
+
+- **CONNECTOR v125 (1356281):** (1) NEW action `get_caller_timezone` — Calendar v3
+  settings/timezone GET through the caller's own VUA connection, FAIL-OPEN
+  (after_error_response swallows → TIMEZONE_LOOKUP_FAILED + empty timezone; never
+  blocks the workflow). (2) `compile_reviewed_operation` gained the policy-governed
+  `naive_time_resolution` transform: when the registry row declares
+  `{contract: workspace-semantic-naive-time/1.0, fields: [start, end]}`, a body
+  field whose dateTime lacks an explicit UTC offset (and has no caller timeZone)
+  gets `timeZone: <caller zone>` attached — GOOGLE-NATIVE resolution (the provider
+  resolves + echoes the offset; NO tz math in the connector, sidesteps TZInfo
+  availability entirely). Explicit offsets and caller-supplied timeZone pass
+  through unchanged; naive + failed lookup → structured NAIVE_TIME_UNRESOLVED
+  fail-closed before plan persist (code-verified only — could not break the live
+  token for a negative test).
+- **REGISTRY:** all 6 calendar.events.insert@v3 intent rows (sibling sweep rule)
+  surgically PUT with the contract; post-PUT read-back 6/6, zero collateral drift.
+  Overlay + generator updated in the canonical repo
+  (semantic/capabilities.v1.json + build-semantic-indexes.mjs passes the key
+  through) — generated policy is byte-identical to the live rows, so the next
+  promote cannot drift it (BSYS-29434 rule honored same-day).
+- **GATEWAY 82273312 (hot-swapped, running=True, 13 succeeded jobs post-push):**
+  trigger result_schema += user_timezone / resolved_start / resolved_end; new top-
+  level step 3 = get_caller_timezone (~150-250ms per call — per-credential CACHING
+  is the open residual); extract steps after BOTH commit paths (confirm 13,
+  intent_scoped 116) emit resolved_start/resolved_end from the commit result_json
+  (empty strings when absent — nil never crosses pill boundaries); user_timezone
+  mapped on read results (73/79), plan-ready (132/159), commit receipts (19/121/99).
+  Rejection returns deliberately unchanged (minimal hot-path diff).
+- **UAT (registry/bsys-29950-uat-evidence.json in the workbench repo):** read
+  envelope carries user_timezone=America/New_York (Josh's calendar zone — NOT LA;
+  per-credential correct); naive create 09:00 → plan preview shows timeZone
+  attached at compile → receipt echoes resolved_start 2026-11-02T09:00:00-05:00
+  (EST — DST-correct, DST ended Nov 1); explicit -08:00 passed through byte-
+  unchanged (same instant, Google re-rendered in calendar zone); idempotent
+  re-delete still MUTATION_COMMITTED; gmail read + intent_scoped drive create/
+  delete clean. Zero residue. workspace_capabilities/workspace_policy_lookup are
+  CONNECTIONLESS (identity-blind) so a per-user timezone cannot surface there —
+  documented deviation from the ticket's AC-1; the google_workspace envelope is
+  the surface that matters.
+- **NEW TRAP REFINEMENT (builder action-schema cache):** the builder snapshots
+  connector metadata at SESSION CREATION, not at add_step time — a fresh
+  add_step for a JUST-RELEASED action still binds a schema-LESS step if the
+  session predates the release (pill refs then flag DatapillInvalidPath in every
+  downstream step). It is a CACHE-ONLY warning: push + START validation accept it
+  and the RUNTIME resolves pills dynamically against the released connector. Full
+  recovery (if start had failed): push, fresh session, remove+re-add the step,
+  re-map. Also: add_step for a step inside a monitor TRY needs parent=<monitor
+  step number> — parent=1 with a mid-recipe position APPENDS AT THE END (the
+  29500-class bug, reconfirmed).
+
+
+<!-- demoted from INDEX.md 2026-10-25, librarian pass, branch librarian/2026-10-25. Content preserved verbatim; the INDEX line is now a routing hook. -->
+
+## INDEX line history (demoted 2026-10-25)
+
+- - [Google Workspace Semantic MCP](projects/google-semantic-mcp.md) — +**2026-10-24: BSYS-29651 3 RESIDUALS CLOSED (connector v122-v124, dev): docs tabs-mode 400 root-caused two-layer (legacy body in default_projection 400s with includeTabsContent=true; mask-swap alone still returned no tabs — explicit flag must be DROPPED, mask referencing tabs implies it) via tabs_aware_projection + apply_tabs_mode_projection single-point before all 3 read executors; CAUTION: approved_query returns CANONICAL keys — query-flag conditions must check both key shapes; calendar 'stale post-delete' was NEVER a cache — Google trash lingers deleted events GET-able with status=cancelled, projection dropped status → status added to all 5 calendar.events.get rows (live-proven cancelled/confirmed); delete-of-deleted = idempotent-delete in connector (SDK fact: after_error_response block return value REPLACES the response when error() is not called) — DELETE 404/410 → already_deleted receipt, clean MUTATION_COMMITTED; specs 65/65; commit c5c3936** — +**2026-10-12: RISK/CONFIRMATION PAIRING RELABEL + MECHANICAL GUARD SHIPPED — 17-cap reversible create/update/copy family external_side_effect→reversible_internal (overlay was already relabeled; registry + 17 rank-1000 mechanical rows repaired same-session), guard in BOTH layers: generator throws on external/destructive+non-always, connector 1356281 v119 (dev, RELEASED) fails closed at index-compile (proven live — it caught+rejected the stale rows on sync 82272892 before the repair); ORDERING TRAP deposited: reconcile seeder-managed mechanical rows BEFORE releasing the guard (promote can't see them); split sweep 26→9 all-benign read-granularity splits, 0 confirmation splits; specs 52/52; commit a4b456c** — **+2026-10-11 eve: BSYS-29500/29501 SHIPPED (connector v115-117, gateway, policy lookup, capabilities): rule-gates default-on (calendar window enforced), fuzzy same-service guard + match_score, facts_sparse advisory machinery (caller_request_text mapping = UI handoff), plan echo compiled_change_json, caller_shape_example_json + item_key notes in policy lookup, shard slot column + quickstart_json, numeric result_size_estimate; ledger 2-3 read / 3-4 mutation; new AIRO traps: move_step silent no-op on giant recipes, literal-pill storage (fix = v4 datapill mode), number_conversion is not a converter; +2026-10-11: P0 registry-gap fixes — people-write corpus cases re-filed under the Oct-8 ruling (typed contact_ops facts; stale-case-passes-for-the-wrong-reason trap), token-layer full-token-coverage rule for reviewed phrasings, workspace plan/catalog family routed into promote-intent-vectors (registry-excluded by design, exe=0), quoted-A1 connector fix (release held for Josh); otto port 104/42 → 124/22, floor green** — **NOW PORTING TO OTTO (2026-10-09): see [[projects/otto.md]] — full-custom Slack-gateway model (FastAPI service owns MCP + Google OAuth + Postgres); key VUA-vs-first-party auth difference saved there** — self-learning semantic gateway; LIVING-MANIFEST HOUSE STYLE adopted 2026-10-10 (manifest opened at kickoff, updated per milestone, mirror in repo, orchestrator reads it — never deploy-time research); canonical repo ~/Documents/ChatGPT/Google Workspace MCP/ (committed); master handoff: that repo's docs/ORCA_CLAUDE_HANDOFF.md + planning/session-handoff-2026-10-06-night.md; Jira epic BSYS-29262; ORGANIC WORKFLOW FLYWHEEL + REJECTION FLYWHEEL BOTH CERTIFIED LIVE 2026-10-07 (organic: miner 82862663 + canary 82862817 + sweep 82862814; rejection: miner 82863662 + promoter 82792961 — paraphrase promoted to live registry 147343 and SERVING, validator 1022/1022; recount-don't-increment + filtered-read dedupe + live-vs-overlay checksum traps deposited); phase 1 workflows live (instantiateTemplate + extractDesignSystem as registry rows); connector v102, gateway v131-equivalent; bounded reads + body constraints + derived_url thumbnails shipped; BSYS-29356 (evidence-weighted routing) + BSYS-29357 (cross-family organic: retire-at-3 proven live, mutation-class sandbox templates, pill type-boundary trap) BOTH CLOSED; open: BSYS-29315 prod rehearsal (staged, Josh go), BSYS-29330 CLOSED Done @ 8pts (all typed-op increments + retirement counter shipped), observability v2 LIVE 2026-10-07 (intelligence metrics table 157186 + hourly computer 82888287 + Monday digest 82888690, HR-Genie pattern: slices for the 1000-cap, WoW deltas; builder pill ['output']-wrapper + ruby-inspect date/double-escape lessons deposited); evening fix-all pass: rollup v2 82889357 live (v1 archived), AI judge (open_ai gpt-4o-mini, fail-closed) wired into canary sweep 82862814 + verified end-to-end, filters.create + error_detail VERIFIED fixed by live probes, composition authoring kit committed (validator + template, found+fixed real deps defects on live rows), REST row-create envelope = POST /records {'document': ...} keyed by COLUMN NAME, **TYPED OPS INCREMENT 1 SHIPPED (BSYS-29330): connector v105 operation_list transform (service-general, fail-closed incl. undeclared-field rejection), 11 batchUpdate tuples + both compositions migrated, conformance fresh, canaries replay typed ops, dual-mode transition stands; gmail/docs/sheets/calendar/people increments ALL SHIPPED same night (typed email facts killed raw MIME on those intents, single_root mode for events, string_list + passthrough + defaults spec types, hot-path-tested per service with real Google 400s teaching the contract; drive ruled out: flat bodies stay), retirement-gate counter LIVE on all 18 recorder sites (failure paths included; the AIRO-push schema-registry trap + editor-save fix deposited; media-compile blank-return latent bug fixed), consent items BOTH RESOLVED (P1 channels:history 10-07; P2 gmail settings live-probed 10-08, runbook P2 flipped) **PROD REHEARSAL BASE CREATED 2026-10-07: 18 workspace_* data tables live in prod project [MCP] Google Workspace Semantic (folder 35717593) — registry 157002 @ 1,022 rows, 17 empty/schema-only; prod project was ACCESS-LOCKED (that was the 'folder_not_found' root cause — fixed by adding Joshua as Project admin collaborator); UI traps (mobile-viewport env switcher, inert Delete-record/pencil buttons, probe-row CSV typing, session-expiry loop) deposited in project file; workflow suite 2026-10-08 GREEN (240-family floor 0 bugs; p0 71/73; typed-op/composite live suite all green; crossFamilyBriefing bind drift fixed; BSYS-29397/29398 FIXED + CLOSED (intent-row scoping rule: registry fixes sweep every intent row; conformance contract 1.3 bind-slot freshness via slot-surface table 157415, negative UAT proven)), autopsy responder schedule stall ROOT-CAUSED + FIXED 2026-10-08 (clock time_unit is CASE-SENSITIVE: capitalized 'Minutes' selects a broken anchor path that silently errors per fire; lowercase 'minutes' + fresh recipe 82893071 fires on schedule; wt recipes copy clones trigger UUIDs — never copy to escape a scheduler problem; laptop fleet stopgap removed), NIGHT WRAP 2026-10-08: epic 29262 + 29307 + 29315 all In Progress (29315 carries the prod-HELD ruling), Confluence current incl. the NEW Data Table Reference child page 2939027461 (every workspace table: writer/reader/hot-path/cadence map built by scanning all 34 recipe codes for table ops; confluence createConfluencePage with omitted contentFormat saves literal markdown - pass contentFormat=markdown explicitly), comparison page unchanged by design; LAUNCH-HARDENING AUDIT 2026-10-10 (5 read-only auditors): 6 stories filed BSYS-29500..29505 (31 pts, dev gated on Josh) — P0 plausible-but-wrong class (empty-facts silent execute, connections.list always fails cold, calendar window rule unenforced), 11-trip cold mutation path, 702/1047 stale contract shapes + debris intent keys, DST Nov 1 + responder history self-destruct + capped-signal dead end, weekend 63h blind window + sentinel scope gap, MISSING AI TRIAGE LAYER (7,308 pending candidates, zero review surface) + 98.7% harness traffic needs traffic_class tag**, People enablement LIVE 2026-10-08 (personal contacts bounded-writable: 13 caps write_shadow always-confirm + typed contact_ops; directory read-only permanently, no write rows; gap-probe 15/15 @ 0.84; scope fix PROVEN: connector v112 + child disconnect + /mcp re-auth; full create/delete UAT zero residue); HARDENING SWEEP DONE 2026-10-08 eve (slot sweep: updateContact fixed, resource_id generic pattern benign; v113 write-mask transform + v114 403 NOT_SHARED split; create/update receipt projections w/ etag; identity probe in daily smoke; slides 11 rows TYPED-ONLY + replace_text op, compositions conformant; 29433 + 29434 + 29435 ALL CLOSED same night: gateway NOT_SHARED mapping pushed (18.4s downtime), overlay owns all typed contracts + promote idempotent); 2026-10-09: no-tuple calls now reject SEMANTIC_TUPLE_REQUIRED with self-service guidance (21.9s downtime; .empty? banned in recipe formulas — use strip == ''); calendar windowed reads default single_events=true (recurring parents were surfacing as stale out-of-window events — occurrences now); **BSYS-29478 filed 2026-10-09 (5pts, Backlog): fleet schedule-liveness sentinel recipe from the accepted project-dreamer proposal — awaiting build kickoff**; BSYS-29490 FIXED + CLOSED same night (calendar events.list += attendees, events.instances pinned projection kills end:null; mask default_projection is DERIVED from overlay projection — one edit flips both, never hand-edit registry; curator paraphrase rows need manual sibling sweep, 5 repaired; routing checksum doesn't rotate on projection edits and serving reads registry live — probe immediately, no sync wait); BSYS-27477 BUILT 2026-10-10 (update_native_file_content sibling action SDK'd at connector/google_drive_mcp/, Docs batchUpdate + Sheets values routing, guards kept, convert-on-update proven DEAD, 12 specs green, pending connector save/release); DATA-QUALITY PASS 2026-10-10: floor's 21 INVALID_RESPONSE_CONTRACT rows were a PORT-ORDER bug (Python validated response_contract before the write-shadow preview branch; Ruby validates reads only) — fixed in execution.py, zero registry writes, MVP 79→100/IRC→0/violations 0; canonical validate-live-registry-contract.mjs gained the missing operation_list branch (was false-flagging 16 typed-mutation rows, now 1042/1042); 2 items flagged for Josh: 3 stale rank-1000 mechanical rows (verb-heuristic write_shadow on POST-method reads, not in generated source, promoter can't reconcile) + drive.files.export's invalid underscore projection — RESOLVED 2026-10-10: Josh ruled export = MEDIA TRANSPORT, execution.py routes media_transport-declared rows through MediaStaging.fetch_media_bytes before response_contract (MEDIA_READY envelope), see projects/otto.md **PHASE-4 FLYWHEEL SLICE 2 PORTED 2026-10-10: discovery sync + preserve-guard + materialization in services/gws-semantic-gateway/flywheel/sync.py (ownership migration 561458004438, single head, applied live); guard blocks+audits any promoted/verified downgrade, export retrieval index reproduced byte-for-byte; wiring seam + gotchas in projects/otto.md**
+## DOCS STYLING OPS (2026-10-26, dev): update_text_style + update_paragraph_style LIVE
+
+- Whitelist extended on ALL 8 docs.documents.batchUpdate@v1 rows (per-row update-record,
+  read-back verified each; freebusy-trap check: operation_list TOP LEVEL on all 8). Connector
+  1356281 v126 (dev, RELEASED) added two GENERIC expand_typed_operation capabilities:
+  (1) 'number' type (Google float magnitudes: fontSize, rgbColor 0..1, indents, lineSpacing);
+  (2) per-op field-mask derivation — op def `fields_mask: {provider}` + field spec
+  `mask_token`; compiler comma-joins tokens of PROVIDED fields into the mask path; empty set
+  fails closed; caller 'fields' stays undeclared/rejected. Precedent: v113 write_mask.
+- WHY mask derivation not static default: a static full 'fields' mask RESETS unsupplied style
+  fields on the target range — per-op derivation gives correct partial-update semantics.
+- Units (fontSize/indent/space Dimension.unit) are OPTIONAL reviewed fields, NO default —
+  compiler defaults are unconditional and would inject a unit when magnitude is absent.
+- Google heading enum is namedStyleType HEADING_1..6 / NORMAL_TEXT / TITLE / SUBTITLE (NOT
+  HEADINGS_*). Colors: rgbColor float triplets only, no hex shorthand in Docs API.
+- Overlay migrated same-session (BSYS-29434 lesson) + expand-semantic-overlay roundtrip
+  verified; mined paraphrase rows are unknown_keys to promote — hand-applied whitelist on them
+  persists. UAT: probe doc create -> 3-op batch (insert + HEADING_1 + bold) -> get verified
+  (namedStyleType HEADING_1 + bold on split run + sibling runs untouched) -> trashed, zero
+  residue. Evidence: Google-Semantic-MCP/registry/docs-styling-uat-evidence.json; commits
+  7b4ee99 (workspace repo) + 29f4262 (canonical repo). Validator 1062/1073 — 11 gmail
+  drafts RFC822 rows fail PRE-EXISTING, unrelated.
+
+## DOCS TABS + BULLETS OPS (2026-10-26, dev): batchUpdate op_types 5 -> 11 LIVE
+
+- All 8 docs.documents.batchUpdate@v1 rows now carry 11 op types: + add_document_tab
+  (tab_title required, tab_icon_emoji optional; tab_id Google-assigned), delete_tab,
+  update_document_tab_properties (fields_mask title/iconEmoji; tab_id request-level, no
+  token), create_paragraph_bullets (bullet_preset = REAL Discovery enum — compound presets
+  like BULLET_DISC_CIRCLE_SQUARE, NOT standalone BULLET_DISC; optional no-default),
+  delete_paragraph_bullets, update_document_style (no required — v126 mask derivation
+  fails closed on empty; background nesting documentStyle.background.color.color.rgbColor.*;
+  margins Dimension unit pattern is UNIT_UNSPECIFIED|PT per Docs Discovery).
+- REGRESSION CLASS FIXED: inherited tab_id pattern [A-Za-z0-9_-]{1,100} rejected REAL
+  Google tab ids (they contain a dot: t.skweh788w56b). Compiler caught it fail-closed.
+  Fixed to [A-Za-z0-9_.-]{1,100} on all 9 tab_id specs x 8 rows (72) + overlay — not just
+  the blocking ops. Lesson: when a spec's pattern is a GUESS about provider id shape, the
+  first real id proves it; sweep every spec carrying the same guessed pattern.
+- Live probe: add_document_tab created Summary tab (t.skweh788w56b) — but batchUpdate
+  result echoes EMPTY replies[], so the tab id came from the includeTabsContent READ, not
+  the mutation response (probing pattern for future tab ops). insert_text into the new tab
+  via location.tabId + create_paragraph_bullets BULLET_DISC_CIRCLE_SQUARE verified via get
+  (3 paragraphs bullet listId kix..., lists block glyphSymbol ● ○ ■ per level). Zero residue.
+- Two identical batchUpdate combo calls timed out at the MCP transport and committed
+  NOTHING (read-back revisionId unchanged); split test A/B (insert only / tab only) both
+  committed instantly — transient transport, not the op. Verify-don't-retry on ambiguous
+  timeout saved a double-insert.
+- No connector change (v126 compiler already generic; maskless op + required:[] both
+  compile clean). Overlay migrated + expander roundtrip (233 caps); validator 1062/1073,
+  ZERO docs violations. Evidence: Google-Semantic-MCP/registry/docs-styling-uat-evidence.json
+  section tabs_bullets_build; commits d60ad53 (workbench) + 6a7390f (canonical).
+
+## BSYS-29957 LIVE-FAILURE INFLOW LANE CLOSED (2026-10-26, dev) — the last manual link in the GAP flywheel is gone
+- **gap_demand_triage (83331188, v8, running) now reads events v3 directly.** New step 4 `get_records_liv1`: get_records on 155508, limit 1000, order_by_field_id=created_at + order_direction=desc (kills the first-1000-window bug; the get_records step DOES support desc ordering — the rejection miner 82863662's read was the template), server-side filter `outcome_code eq SEMANTIC_CONTEXT_INVALID`.
+- **Vocabulary (inspected live, not recited):** the unserved-demand class is `outcome_code=SEMANTIC_CONTEXT_INVALID` (910 live rows — the certified rejection flywheel's VOCAB_REJECTION constant equals exactly this). EXCLUDED: `error_code='refusal'` (613 of 910 = LLM-gateway provider refusal mid-execution, capability had resolved fine — NOT demand), `traffic_class in [uat_probe, bench, regression, test]` (6 uat_probe live), and auth/transient classes (RECONNECT_REQUIRED / NOT_SHARED / GOOGLE_PROVIDER_ERROR / GOOGLE_NOT_FOUND never carry that outcome_code, so the server-side filter excludes them by construction). `error_code=SEMANTIC_TUPLE_REQUIRED` (no-tuple classification, 2026-10-09) has ZERO live rows — designed, never fired.
+- **Gate merge:** step 5 gate gained `live_failure_rows_json` input; lane 2 clusters by [service = capability_id prefix, normalized_request.downcase], dedupes via distinct request_fingerprints, merges into the SAME clusters hash (seeder base + live fps), same MIN_DEMAND=3 bar, same DEBRIS lint + phrase lint, same known_ids dedupe. Fail-closed counting via new outputs `live_events_parsed` / `live_events_skipped`. Panel + proposal write (steps 6-18) UNCHANGED — proposals only, no build steps.
+- **E2E proof (job j-Ac9LktdP-NbrkKk-CD):** one TEST event `test-gap-inflow-e2e` (traffic_class empty, aggregate truthfully 1, `[TEST PROBE - not real demand]` marker in ctx) docked, jury adjudicated NOT-ME (judge 1 / dissenter 9 / resolver NOT-ME), proposal row 1962763d written, test event DELETED (verified 0 by event_id + fingerprint). Lane saw 786-row tail: parsed 49, skipped 737, lint 125.
+- **PLATFORM TRAP (cost 2 PUTs):** Workato recipe PUT normalizes `code_input.data` against the block's **extended_input_schema** — a new data key without a matching property there is SILENTLY DROPPED on save (schema string + data pill both present, saved without it). And a NEW get_records block needs `extended_output_schema` declaring the `records` array (with `Record ID` property) or recipe START fails: `Unknown data field "Records"`. Declare in BOTH the schema string AND extended_*_schema, or it vanishes.
+- **Emitted-code trap:** long inline tool-call payloads (7.6k-char Ruby gate) got truncated mid-generation twice; the fix is programmatic assembly from disk files + `wt api put` with a file-built payload. Never hand-type long field values into AIRO set_input_field calls.
+- Evidence: registry/bsys-gap-flywheel-uat-evidence.json § live_inflow_lane_2026_10_26; gate code mirror scripts/gap-demand-triage-gate.rb; commit 66cc2af.
+
+## BSYS-29957 FLYWHEEL SPEEDUP — 15-MIN ALL-PLATFORM LOOP LIVE (2026-10-26, dev)
+- **The GAP flywheel serving loop is now fully in-platform at 15-min cadence.** triage 83331188 v9 (15-min clock + in-recipe build sweep), sync 82272892 (15-min clock since 10-12 — the old "hourly at :25" line was stale — + single-flight lock), NEW bridge 83355797 `gw_gap_sync_materialize_bridge` (real-time new/updated trigger on registry 147343 → force-run sync; proven 1.4 s add→fire). No local scripts in the serving loop; auto-builder.mjs demoted to OFFLINE SEEDING UTILITY (header note; the rejected launchd-flavored edits were reverted; no plists).
+- **In-recipe build (v9):** post-docket sweep → fail-closed selector (proposed + unanimous + non-TEST + spec-complete) → clone the variant_of row's full 19-col contract → swap capability_id/index_key/intent_key/rank(+1000)/projection_json/activation+confirmation (pairing law: read_enabled+never for pure reads, else write_shadow+always) → add_record 147343 → proposal built|build_failed; then adhoc force-run of 82272892 (Platform API connector `__adhoc_http_action`, POST /api/recipes/82272892/force_run). Wall clock PROVEN: event→proposal ~8 s; proposal→built ~3.4 s; build→materialized ~24 s (sync runtime ~21 s). Machinery-proof rows (calendar.events.freeWindowRead@v3, gmail.messages.windowRead@v1, docs.documents.readBody@v1) built live, verified inside retrieval-index shards, then deleted — registry back to 1,073, generation back to 0cb45f67.
+- **Single-flight:** lock rows `gap_sync_lock`/`gap_sync_dirty` in 156399 (house convention: epoch+flags in the detail STRING). Head gate yields (dirty + clean stop) when a fresh beat (<600 s) exists; tail releases + reruns once if dirty. Workato force-runs are platform-serialized anyway (second run started 0.9 s after first completed), so the gate is belt-and-braces. Bridge does NOT fire on DELETE (new/updated only) — deletes retire at the next 15-min clock pass.
+- **Traps (evidence file has the full list):** db-table `records` pills arrive in Ruby as INSPECT-FORMAT STRINGS — REPAIR+PARSE or you silently see zero rows (an empty-docket smoke is a FALSE PASS); pill_type is "output" even for loop items (provider "foreach"); Ruby outputs must ALSO mirror in extended_output_schema or downstream pills fail start validation; integer table fields need parse_output/render_input integer_conversion; the db-table REALTIME trigger needs table_id NUMERIC (UUID 400s "Does not exist in input field"); `__adhoc_http_action` silently drops path/response_type unless extended_input_schema declares them (copy a proven step's schema); /test|probe/i must be boundary-aware or "latest" reads as TEST.
+- Evidence: registry/bsys-gap-flywheel-uat-evidence.json § flywheel_speedup_allplatform_2026_10_26; commit f702753.
+
+## BSYS-29957 JURY PROVIDER DIVERSITY + DIGEST BUILD VISIBILITY (2026-10-26, dev)
+- **gap_demand_triage (83331188) jury panel is now provider-diverse** — was 3x OpenAI (gpt-4.1 / gpt-4o-mini / gpt-4.1-mini); now **judge = Anthropic claude-sonnet-4-5 (conn 17264765, the dev-api-mcp jury's Claude connection) / dissenter = open_ai gpt-4o-mini (unchanged) / resolver = Gemini models/gemini-3.8-flash (conn 19367709, the dev-api-mcp jury's resolver connection)**. Verdict semantics byte-identical (fail-closed adjudication, unanimity thresholds, catch juror_error); only the model legs + pill paths changed (judge_raw → ["response"], resolver_raw → ["answer"]; block as-keys/uuids stable). E2E: test event test-gap-inflow-jury-diversity-e2e docked via the gate's TEST-bypass prefix, proposal gap-proposal-a0661448314e carries all three verdicts from THREE providers, test event deleted (0 by event_id + fingerprint), proposal row kept as TEST-marked audit trail. Job j-Ac9R9do6-Qp3EAF-CD.
+- **OPUS-5-5 TRAP (deposited in error-ledger):** the Anthropic-by-Workato connector cannot serve claude-opus-5-5 — temperature 400s (deprecated), then response:null with no error at mt 300/2000; sonnet-4-5 on the SAME connection returns full verdicts (split test). Coordinator's opus-5-5 pick degraded to sonnet-4-5 and flagged; gateway HTTP fallback (ai.preview.workato.com/anthropic + ANTHROPIC_AUTH_TOKEN project property) is the follow-up if Opus 5.5 is a hard requirement. NOTE: the gate's TEST-bypass keys on event_id prefix 'test-gap-inflow' ONLY — a 'test-jury-diversity-e2e' event_id would NOT dock.
+- **Digest 82888690 gained "Flywheel built this week"**: new get_records_prop9d block on proposals 164783 + Ruby section in BOTH branches (status=built, 21d window, dedupe, "none this week" fallback). Proof: force-run j-Ac9QshBb-mYQLwL-CD renders the section with "none this week" (0 built rows — correct). Recipe PUT trap: config must be a JSON STRING. Evidence: registry/bsys-gap-flywheel-uat-evidence.json § jury_diversity_digest_2026_10_26.
+
+## BSYS-29957 UNPROVEN GATES AUDIT — discovery verification WAS a hallucination hole, now REAL (2026-10-26, dev)
+- **Item 1 (critical): `discovery_verified=builder_gate` was a hardcoded LABEL, not a check** — the build branch consulted only registry 147343 + proposals 164783; nothing fetched Discovery. FIXED in triage 83331188 v10: selector passes discovery_op through; new Ruby step derives the approved live-Discovery URL; new HTTP step (sync's make_request_v2 pattern) fetches the LIVE doc per buildable proposal; derive step's fail-closed DISCOVERY GATE requires the method present under `<service>.<resource>` in the live doc + capability_id @version == doc version, else `hallucinated_op: ...` -> build_failed with ZERO rows. LIVE-PROVEN BOTH PATHS (job j-Ac9R3eP9-PLeXsN-CD): real-op-anchored variant BUILT; gmail.messages.teleport@v1 -> build_failed `hallucinated_op`. Census: all 240 real Discovery ops are already registered — the literal "real unregistered op" case is impossible on a synced registry; builds are variant-class, now Discovery-grounded.
+- **Item 2: the phrase re-seed leg DOES NOT EXIST** — no writer to phrase_seed 155485 anywhere (code-walked). Minimal proof delivered: built capability's intent_keys = originating phrases, materialized into shard active:calendar:0007 (serving index). Phrase-PROMOTION half = next-cadence manual seeder step, documented honestly, not faked.
+- **Item 3: bridge 83355797 was structurally invisible to liveness sentinel 82951201** (candidate filter required a clock trigger). FIXED: sentinel v12 EVENT_RECIPES name allowlist + fixed 48h last-success bar for event-triggered recipes; proven 27/27 -> 28/28 candidates, 0 anomalies. Triage mode-row heartbeat stamps (`|hb=<ts>`) added + proven live. Bridge in-recipe heartbeat FAILED on both write paths (raw-PUT update_record normalization; AIRO picklist empty) — bridge RESTORED to original + running; job-age coverage stands in; inert gap_bridge_heartbeat seed row documented.
+- **Traps:** new HTTP step needs the `rest` application config block or START fails "missing adapter configuration: rest"; raw-PUT update_record parameters can be unbindable on some recipes (3-strike, restore-first); AIRO can't configure upsert_record columns when platform picklists return empty; dropped pills resurface as "can't be blank" START errors on declared-but-blank ext-input fields.
+- Evidence: registry/bsys-gap-flywheel-uat-evidence.json § unproven_gates_audit_2026_10_26.
+
+## FULL-SPINE promotion manifest 372377 (BSYS-29592, 2026-10-26)
+
+- Whole-project RLM manifest **372377** ("BSYS-29592 FULL-SPINE promotion manifest — whole project (dev)"),
+  anchored at project root 35404395: **107 rows / 103 selected** (55 recipes, 33 tables schema-only,
+  7 skills, 5 adapters, 1 mcp_server MANDATORY, 1 genie, 1 canvas), **4 connection rows unselected**
+  (22117414 CON|Google Workspace Semantic MCP, 22119506 CON|Google Discovery (public),
+  22117151 POC-base, 22250688 GW Semantic Alerts Bot). Package **42329814** completed,
+  ZIP 125 members, zero .connection.json, 62 recipe members = 55 + 7 skill-backing pairs.
+  Mirror: manifests/BSYS-29592.manifest.json (commit 291f08f). DR comment 1149657 posted.
+- **Zero property rows exist in the tree** — the project carries NO project properties, so the
+  property-exclusion rule is satisfied structurally (no pre-create property steps needed).
+- **LESSON (JSM DR field lock):** once a DR sits in **Final Tech Review**, ALL field edit pencils
+  are disabled AND REST PUT (v2+v3, cookie + basic auth) 400s "not on the appropriate screen" —
+  the Workato Manifest Link field CANNOT be updated after entry. Set manifest-link fields BEFORE
+  the DR reaches Final Tech Review, or Josh edits it himself (currently still 362110; new manifest
+  linked live in comment 1149657).
+- **Wizard mechanics that worked:** source-folder tree-select node = full pointer-sequence eval at
+  .tree-select-node__option coords (Angular form model TAKES it, Next enables); wizard pre-selects
+  ALL 102 assets — the summary panel ("YOUR MANIFEST CONTAINS") is the form-model truth after
+  unchecks; connections folder row itself can stay checked (0 of 2 selected exports nothing).
+- Table members in the export ZIP are SCHEMA-ONLY (name/project_name/schema keys) — the earlier
+  package-42210054 failure (workspace_learning_events_v3 >10000 records) cannot recur via ZIP.
+
+## BSYS-29957 RED-TEAM DELTA M1+M2 FIXED (2026-10-26, dev) — build branch now verifies what actually executes
+- **M1:** derive gate verifies BOTH the proposed discovery_op AND the variant_of op against the LIVE Discovery doc (method under service.resource + version match, fail-closed) — the derived row is a base.dup clone of variant_of, so variant_of is what executes; built proposals now stamp "provenance: executes variant_of <op> (live-Discovery verified)" in build_notes. Tri 83331188 v31.
+- **M2:** intent_key collision guard — new get_records fetches same-service registry rows; token-cosine >= 0.50 (exact included, service-scoped) refuses before any write. In-recipe approximation of the router's embedding near-tie class; deep-embedding near-ties stay covered by the router's own service guard at serving time.
+- **Four-path live proof (j-Ac9T6tPQ-gp9wfF-CD):** clean builds / hallucinated op refuses / collision refuses (find email @ 0.5) / variant_of miss refuses. Cleanup zero-residue; validator 1062/1073 = pre-existing baseline; scheduled fire 14:02 PT proves trigger registration survived the push.
+- **Traps:** get_records op_default must be 'eq' (op ID) not 'equals' (label) — saves fine, 400s at runtime, and the wrong value is STICKY through PUTs (fix: delete the step + fresh wholesale clone of a working step); read back saved filters after every PUT.
+- Evidence: registry/bsys-gap-flywheel-uat-evidence.json § m1_m2_fixes_2026_10_26; commit 1502c42.

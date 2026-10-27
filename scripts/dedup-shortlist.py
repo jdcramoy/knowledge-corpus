@@ -30,7 +30,29 @@ def tokens(path):
 def harvest(root):
     out = {}
     for dirpath, _dirs, files in os.walk(root):
-        if 'garden-reports' in dirpath or 'claims' in dirpath or 'scripts' in dirpath:
+        # Machine-generated dirs (estate sweeps, telemetry, append-ledgers)
+        # produce thousands of 1.00-identical pairs that drown real
+        # knowledge dupes — never candidates (2026-10-17).
+        if any(part in dirpath.split(os.sep) for part in (
+                'garden-reports', 'claims', 'scripts', 'workato-health',
+                'sweeps', 'skills-telemetry', 'ops-visibility',
+                'instruction-patches',
+                # Artifact-exclusion list approved 2026-10-26 (corpus-2026-10-23
+                # proposal 3 + 2026-10-22 full-garden-pass Phase G): generated
+                # artifact families that drown the dedup signal (5,259 pairs ->
+                # 1 actionable = 99.98% noise). Covers daily snapshots
+                # (calibration-report-*), append-ledgers (roi/, api-index.jsonl
+                # .prev twins), estate-snapshot dirs, predictions, regression
+                # canon snapshots.
+                'roi', 'predictions', 'workato-api', 'state-snapshots',
+                'app-snapshots', 'regression-canon', 'reports',
+                'integrity', 'chaos', 'twin', 'workato-terms')):
+            continue
+        # skip hidden/generated dirs below the tree root (.stash git-stash
+        # copies etc.) — check relpath only: absolute paths contain ~/.claude
+        rel = os.path.relpath(dirpath, root)
+        if any(part.startswith('.') for part in rel.split(os.sep)):
+            continue
             continue
         for f in files:
             if f.endswith('.md') or f.endswith('.jsonl'):
