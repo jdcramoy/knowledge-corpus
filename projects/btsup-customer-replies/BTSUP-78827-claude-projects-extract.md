@@ -53,7 +53,7 @@ The original triage reply told Mercer a key needed issuing by an org owner and
 that enablement state was unknown. Both were already settled:
 
 - The key has existed since 2026-10-11, stashed in the macOS keychain
-  (`anthropic-compliance-key` / acct `josh`, `sk-ant-api01-...`), originally
+  ([redacted: keychain pointer]), originally
   used to mine claude conversations for the Google Semantic MCP project
   (`~/orca/workspaces/workbench/Google-Semantic-MCP/scripts/phrase-miner/mine.mjs`).
 - Live-probed 2026-10-15: `GET /v1/compliance/organizations` → 200 (single org
